@@ -42,6 +42,20 @@ struct OnboardingView: View {
                         app.permissions.openAccessibilitySettings()
                     }
                 )
+                PermissionStep(
+                    icon: "wand.and.stars",
+                    title: "Automation",
+                    detail: "To place text in the focused field.",
+                    granted: app.permissions.automation == .granted,
+                    action: {
+                        Task {
+                            await app.permissions.requestAutomation()
+                            if app.permissions.automation != .granted {
+                                app.permissions.openAutomationSettings()
+                            }
+                        }
+                    }
+                )
             }
 
             Spacer(minLength: 0)
@@ -81,7 +95,7 @@ struct OnboardingView: View {
     private var footnote: String {
         app.permissions.allGranted
             ? "You're all set. Press ⌘⇧D to start."
-            : "Grant all three to start dictating. No restart needed."
+            : "Grant all four to start dictating. No restart needed."
     }
 }
 

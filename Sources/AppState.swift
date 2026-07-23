@@ -22,13 +22,6 @@ final class AppState {
     /// Which page the main window is showing.
     var mainPage: MainPage = .settings
 
-    /// How transcribed text is pasted into the focused app.
-    var pasteMethod: PasteMethod {
-        didSet {
-            UserDefaults.standard.set(pasteMethod.rawValue, forKey: "pasteMethod")
-            injector.method = pasteMethod
-        }
-    }
 
     /// Optional single-modifier trigger (e.g. tap Right Shift), alongside the
     /// regular key combination.
@@ -61,17 +54,12 @@ final class AppState {
         modifierTrigger = ModifierTrigger(
             rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
         ) ?? .none
-        pasteMethod = PasteMethod(
-            rawValue: UserDefaults.standard.string(forKey: "pasteMethod") ?? ""
-        ) ?? .standard
         currentInputName = AudioDevices.defaultInputName()
 
         let history = HistoryStore(context: modelContainer.mainContext)
         self.history = history
 
         sounds.enabled = { [weak self] in self?.soundsEnabled ?? true }
-
-        injector.method = pasteMethod
 
         coordinator = RecordingCoordinator(
             session: DictationSession(locale: .current),

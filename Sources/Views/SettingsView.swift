@@ -113,24 +113,6 @@ struct SettingsView: View {
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
                     )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-                    HStack(spacing: Theme.s3) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Paste method").font(.system(size: 13, weight: .medium))
-                            Text(app.pasteMethod.detail)
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: Theme.s3)
-                        Picker("", selection: $app.pasteMethod) {
-                            ForEach(PasteMethod.allCases) { method in
-                                Text(method.title).tag(method)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 140)
-                    }
-                    .padding(.horizontal, Theme.s3)
-                    .padding(.vertical, Theme.s2 + 2)
                 }
             }
         }
@@ -178,6 +160,19 @@ struct SettingsView: View {
                         action: {
                             app.permissions.requestAccessibility()
                             app.permissions.openAccessibilitySettings()
+                        }
+                    )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    PermissionRow(
+                        title: "Automation",
+                        granted: app.permissions.automation == .granted,
+                        action: {
+                            Task {
+                                await app.permissions.requestAutomation()
+                                if app.permissions.automation != .granted {
+                                    app.permissions.openAutomationSettings()
+                                }
+                            }
                         }
                     )
                 }

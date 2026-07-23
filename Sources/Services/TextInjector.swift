@@ -46,10 +46,6 @@ final class TextInjector: TextInjecting {
 
     private var targetApp: NSRunningApplication?
 
-    /// How the paste keystroke is delivered. Standard works nearly everywhere;
-    /// AppleScript is the escape hatch for apps that reject synthetic events.
-    var method: PasteMethod = .standard
-
     func captureTarget() {
         targetApp = NSWorkspace.shared.frontmostApplication
     }
@@ -104,11 +100,13 @@ final class TextInjector: TextInjecting {
 
     // MARK: - Private
 
+    /// AppleScript first: driving System Events goes through Apple Events rather
+    /// than the synthetic event stream, and is the only route that proved
+    /// reliable across native, Electron and web-based apps alike. Synthetic key
+    /// events remain as an automatic fallback for when automation is unavailable.
     private func postPaste() async {
-        if method == .appleScript {
-            pasteViaAppleScript()
-            return
-        }
+        if pasteViaAppleScript() { return }
+        NSLog("Yap: AppleScript paste unavailable, falling back to synthetic key events")
         await postSyntheticPaste()
     }
 
@@ -154,17 +152,18 @@ final class TextInjector: TextInjecting {
         post(commandKey, down: false, flags: [])
     }
 
-    /// Alternative route via System Events. Goes through Apple Events rather than
-    /// the event stream, so it can work where synthetic keystrokes don't.
-    /// Requires the user to allow Yap to control System Events.
-    private func pasteViaAppleScript() {
+    /// Pastes via System Events. Returns false if it didn't run — typically
+    /// because automation access hasn't been granted.
+    private func pasteViaAppleScript() -> Bool {
         let source = "tell application \"System Events\" to keystroke \"v\" using command down"
-        guard let script = NSAppleScript(source: source) else { return }
+        guard let script = NSAppleScript(source: source) else { return false }
         var error: NSDictionary?
         script.executeAndReturnError(&error)
         if let error {
             NSLog("Yap: AppleScript paste failed: \(error)")
+            return false
         }
+        return true
     }
 
     private func scheduleRestore(

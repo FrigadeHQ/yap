@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import Speech
 import ApplicationServices
+import Carbon
 import Observation
 
 /// Tracks and requests the three permissions Yap needs: microphone, speech
@@ -16,17 +17,60 @@ final class PermissionsManager {
     var microphone: Status = .notDetermined
     var speech: Status = .notDetermined
     var accessibility: Bool = false
+    /// Permission to drive System Events, which is how text is pasted.
+    var automation: Status = .notDetermined
 
     private var pollTimer: Timer?
 
     var allGranted: Bool {
-        microphone == .granted && speech == .granted && accessibility
+        microphone == .granted && speech == .granted && accessibility && automation == .granted
     }
 
     func refresh() {
         microphone = Self.map(AVCaptureDevice.authorizationStatus(for: .audio))
         speech = Self.map(SFSpeechRecognizer.authorizationStatus())
         accessibility = AXIsProcessTrusted()
+        automation = Self.automationStatus(prompt: false)
+    }
+
+    /// Triggers the "Yap wants to control System Events" prompt. Runs off the
+    /// main actor because the call blocks until the user answers.
+    func requestAutomation() async {
+        let result = await Task.detached { Self.automationStatus(prompt: true) }.value
+        automation = result
+    }
+
+    func openAutomationSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Asks the Apple Events subsystem whether we may drive System Events,
+    /// optionally surfacing the consent prompt.
+    private nonisolated static func automationStatus(prompt: Bool) -> Status {
+        let bundleID = "com.apple.systemevents"
+        var target = AEAddressDesc()
+
+        let created = bundleID.withCString { pointer in
+            AECreateDesc(typeApplicationBundleID, pointer, strlen(pointer), &target)
+        }
+        guard created == noErr else { return .notDetermined }
+        defer { AEDisposeDesc(&target) }
+
+        switch AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, prompt) {
+        case noErr:
+            return .granted
+        case OSStatus(errAEEventNotPermitted):
+            return .denied
+        case OSStatus(errAEEventWouldRequireUserConsent):
+            return .notDetermined
+        case OSStatus(procNotFound):
+            // System Events isn't running yet; it launches on demand.
+            return .notDetermined
+        default:
+            return .notDetermined
+        }
     }
 
     /// Watches for Accessibility being granted in System Settings while we run,
