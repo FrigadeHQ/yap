@@ -6,6 +6,8 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Transcript.createdAt, order: .reverse) private var transcripts: [Transcript]
     @State private var search = ""
+    /// Set when shown inside the main window, which gives it a back button.
+    var onBack: (() -> Void)?
 
     private var filtered: [Transcript] {
         guard !search.isEmpty else { return transcripts }
@@ -14,6 +16,10 @@ struct HistoryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let onBack {
+                PageHeader(title: "History", onBack: onBack)
+                Divider().overlay(Theme.hairline)
+            }
             toolbar
             Divider().overlay(Theme.hairline)
 
@@ -33,7 +39,6 @@ struct HistoryView: View {
                 }
             }
         }
-        .frame(minWidth: 420, minHeight: 460)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

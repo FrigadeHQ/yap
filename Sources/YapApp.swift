@@ -21,15 +21,23 @@ struct YapApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var app = AppState.shared
 
+    private var isRecording: Bool { app.coordinator.state != .idle }
+
     var body: some Scene {
+        // A plain system menu — no custom panel. Everything here opens a real
+        // window or toggles recording.
         MenuBarExtra {
-            MenuBarView()
-                .environment(app)
-                .modelContainer(app.modelContainer)
+            Button(isRecording ? "Stop Dictation" : "Start Dictation") {
+                app.toggleRecording()
+            }
+            Divider()
+            Button("Open Yap…") { app.openMain(page: .settings) }
+            Button("Recording History…") { app.openMain(page: .history) }
+            Divider()
+            Button("Quit Yap") { NSApplication.shared.terminate(nil) }
         } label: {
-            Image(systemName: app.coordinator.state == .idle ? "mic" : "mic.fill")
+            Image(nsImage: MenuBarIcon.image(recording: isRecording))
         }
-        .menuBarExtraStyle(.window)
     }
 }
 
@@ -38,18 +46,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A relaunch briefly leaves the previous instance alive.
         AppRelauncher.terminateOtherInstances()
 
+        // Yap always appears in the Dock while it's running.
+        NSApp.setActivationPolicy(.regular)
+
         let app = AppState.shared
-        app.applyActivationPolicy()
         app.bootstrap()
 
         // Show onboarding on first run or whenever a permission is missing.
         if !app.permissions.allGranted {
-            app.presentMainWindow()
+            app.openOnboarding()
         }
     }
 
-    /// Yap has no Dock icon and no default window, so opening it from Finder
-    /// would otherwise look like nothing happened.
+    /// Yap has no default window, so opening it from the Dock or Finder would
+    /// otherwise look like nothing happened.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         AppState.shared.presentMainWindow()
         return true

@@ -3,10 +3,12 @@ import KeyboardShortcuts
 
 struct SettingsView: View {
     @Environment(AppState.self) private var app
+    var onOpenHistory: (() -> Void)?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.s5) {
+                historySection
                 shortcutSection
                 generalSection
                 inputSection
@@ -15,9 +17,38 @@ struct SettingsView: View {
             }
             .padding(Theme.s5)
         }
-        .frame(width: 460)
-        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { app.permissions.refresh(); app.launchAtLogin.refresh() }
+    }
+
+    /// Sits above the shortcut so transcripts are the first thing you can reach.
+    private var historySection: some View {
+        Button {
+            onOpenHistory?()
+        } label: {
+            HStack(spacing: Theme.s3) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("View history").font(.system(size: 13, weight: .medium))
+                    Text("Browse and copy past transcripts.")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(Theme.s4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var shortcutSection: some View {
@@ -56,12 +87,6 @@ struct SettingsView: View {
                         title: "Sound feedback",
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
-                    )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-                    SettingsToggleRow(
-                        title: "Show in Dock",
-                        subtitle: "Turn off to run from the menu bar only.",
-                        isOn: $app.showsDockIcon
                     )
                 }
             }
@@ -115,18 +140,16 @@ struct SettingsView: View {
                 }
             }
 
-            HStack(spacing: Theme.s2) {
-                if !app.permissions.accessibility {
+            if !app.permissions.accessibility {
+                HStack(spacing: Theme.s2) {
                     Button("Reset & re-grant") {
                         app.permissions.resetAccessibilityGrant()
                     }
                     .buttonStyle(GhostButtonStyle())
+                    Button("Restart Yap") { app.restartApp() }
+                        .buttonStyle(GhostButtonStyle())
                 }
-                Button("Restart Yap") { app.restartApp() }
-                    .buttonStyle(GhostButtonStyle())
-            }
 
-            if !app.permissions.accessibility {
                 Text("If Accessibility looks switched on but Yap still can't paste, the grant is stale after a rebuild — reset and grant it again.")
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
