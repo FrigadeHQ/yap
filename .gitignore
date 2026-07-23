@@ -13,6 +13,9 @@ DerivedData/
 .build/
 .swiftpm/
 
+# XcodeGen-generated project (source of truth is project.yml)
+Yap.xcodeproj/
+
 # Secrets / signing
 *.p12
 *.mobileprovision

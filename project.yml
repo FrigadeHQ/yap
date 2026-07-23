@@ -1,0 +1,61 @@
+name: Yap
+options:
+  bundleIdPrefix: com.frigade
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "2.0.0"
+
+targets:
+  Yap:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+    dependencies:
+      - package: KeyboardShortcuts
+    settings:
+      base:
+        INFOPLIST_FILE: Sources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.frigade.Yap
+        PRODUCT_NAME: Yap
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: NO
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+
+  YapTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Yap
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.frigade.YapTests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Yap:
+    build:
+      targets:
+        Yap: all
+        YapTests: [test]
+    test:
+      targets:
+        - YapTests
