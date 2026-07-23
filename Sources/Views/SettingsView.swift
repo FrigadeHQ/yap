@@ -108,6 +108,13 @@ struct SettingsView: View {
                     )
                 }
             }
+
+            if app.permissions.needsRestartForAccessibility {
+                Button("Restart Yap to apply Accessibility") {
+                    app.restartForAccessibility()
+                }
+                .buttonStyle(GhostButtonStyle())
+            }
         }
     }
 

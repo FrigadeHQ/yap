@@ -9,6 +9,8 @@ enum HUDPhase: Equatable {
     case done(inserted: Bool)
     /// Nothing was heard.
     case empty
+    /// Relaunching to pick up newly granted Accessibility rights.
+    case restarting
 }
 
 /// Drives the floating recording HUD. Behind a protocol so the coordinator can

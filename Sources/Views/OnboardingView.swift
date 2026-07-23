@@ -46,24 +46,37 @@ struct OnboardingView: View {
 
             Spacer(minLength: 0)
 
-            Button(app.permissions.allGranted ? "Done" : "Continue") {
-                NSApp.keyWindow?.close()
+            if app.permissions.needsRestartForAccessibility {
+                Button("Restart Yap") { app.restartForAccessibility() }
+                    .buttonStyle(PrimaryButtonStyle())
+            } else {
+                Button(app.permissions.allGranted ? "Done" : "Continue") {
+                    NSApp.keyWindow?.close()
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(!app.permissions.allGranted)
+                .opacity(app.permissions.allGranted ? 1 : 0.5)
             }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(!app.permissions.allGranted)
-            .opacity(app.permissions.allGranted ? 1 : 0.5)
 
-            Text(app.permissions.allGranted
-                 ? "You're all set. Press ⌘⇧D to start."
-                 : "Grant all three to start dictating.")
+            Text(footnote)
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(Theme.s6)
         .frame(width: 460, height: 560)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { app.permissions.refresh() }
+    }
+
+    private var footnote: String {
+        if app.permissions.needsRestartForAccessibility {
+            return "Accessibility applies once Yap restarts.\nThis takes a second."
+        }
+        return app.permissions.allGranted
+            ? "You're all set. Press ⌘⇧D to start."
+            : "Grant all three to start dictating."
     }
 }
 

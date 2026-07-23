@@ -57,6 +57,12 @@ final class AppState {
         permissions.refresh()
         launchAtLogin.refresh()
 
+        permissions.onAccessibilityGranted = { [weak self] in
+            guard let self, self.permissions.needsRestartForAccessibility else { return }
+            self.restartForAccessibility()
+        }
+        permissions.startObserving()
+
         hotkeys.onToggle { [weak self] in
             guard let self else { return }
             Task { await self.coordinator.toggle() }
@@ -70,5 +76,18 @@ final class AppState {
     /// Toggles recording (used by the menu Start/Stop button).
     func toggleRecording() {
         Task { await coordinator.toggle() }
+    }
+
+    /// Relaunches so newly granted Accessibility rights take effect. Skipped
+    /// while a dictation is in flight so the user is never cut off mid-sentence
+    /// — the Settings and onboarding screens offer a manual restart in that case.
+    func restartForAccessibility() {
+        guard coordinator.state == .idle else { return }
+        hud.show(device: nil)
+        hud.setPhase(.restarting)
+        Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            AppRelauncher.relaunch()
+        }
     }
 }

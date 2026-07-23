@@ -20,20 +20,29 @@ protocol TextInjecting {
 /// target is found, the text is left on the clipboard.
 @MainActor
 final class TextInjector: TextInjecting {
+    /// How long to wait after ⌘V before putting the user's clipboard back.
+    /// Long enough for slower targets (Electron apps, browsers) to consume the
+    /// paste, short enough that the clipboard isn't visibly hijacked.
+    private static let restoreDelay: TimeInterval = 0.25
+
     func deliver(_ text: String) -> InjectionOutcome {
         let saved = PasteboardSnapshot.capture()
 
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+        let changeCountAfterWrite = pasteboard.changeCount
 
         guard isFocusedElementEditable() else {
-            // Leave the text on the clipboard for manual pasting.
+            // Leave the text on the clipboard for manual pasting — restoring
+            // here would discard the transcript.
             return .leftOnClipboard
         }
 
         simulatePaste()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.restoreDelay) {
+            // If the user copied something else in the meantime, leave it alone.
+            guard NSPasteboard.general.changeCount == changeCountAfterWrite else { return }
             PasteboardSnapshot.restore(saved)
         }
         return .pasted

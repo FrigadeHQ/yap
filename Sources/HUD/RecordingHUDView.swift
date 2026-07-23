@@ -56,6 +56,10 @@ struct RecordingHUDView: View {
             Image(systemName: "waveform.slash")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(.secondary)
+        case .restarting:
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -78,6 +82,14 @@ struct RecordingHUDView: View {
             Text("Didn't catch that")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
+        case .restarting:
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Restarting Yap")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Applying Accessibility access")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
