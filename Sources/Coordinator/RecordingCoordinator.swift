@@ -105,6 +105,10 @@ final class RecordingCoordinator {
     }
 
     private func startRecording() async {
+        // Capture the target app BEFORE any Yap UI appears, so the paste goes to
+        // where the user actually was.
+        injector.captureTarget()
+
         state = .recording
         startedAt = Date()
         sounds.playStart()
@@ -137,8 +141,11 @@ final class RecordingCoordinator {
             }
 
             state = .inserting
-            let outcome = injector.deliver(text)
+            let outcome = await injector.deliver(text)
             lastOutcome = outcome
+            if case .blockedBySecureInput(let holder) = outcome {
+                NSLog("Yap: paste blocked by secure input held by \(holder ?? "another app"); text left on clipboard")
+            }
 
             let duration = startedAt.map { Date().timeIntervalSince($0) }
             history.save(text: text, duration: duration, device: deviceName())

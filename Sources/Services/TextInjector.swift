@@ -6,60 +6,104 @@ import ApplicationServices
 enum InjectionOutcome: Equatable {
     /// Text was pasted into the focused field.
     case pasted
-    /// No editable target was found; text was left on the clipboard to paste manually.
+    /// Couldn't paste; text was left on the clipboard to paste manually.
     case leftOnClipboard
+    /// Another app holds Secure Event Input, which blocks synthetic keystrokes.
+    case blockedBySecureInput(String?)
 }
 
 @MainActor
 protocol TextInjecting {
-    func deliver(_ text: String) -> InjectionOutcome
+    /// Records which app to paste into. Called the moment recording starts,
+    /// before any Yap UI appears, so the target can't be mistaken for our own HUD.
+    func captureTarget()
+    func deliver(_ text: String) async -> InjectionOutcome
 }
 
-/// Delivers text by placing it on the clipboard and simulating ⌘V into the
-/// focused field, then restoring the previous clipboard contents. If no editable
-/// target is found, the text is left on the clipboard.
+/// Delivers text by placing it on the clipboard and synthesizing ⌘V into the
+/// app that was frontmost when recording began, then restoring the clipboard.
 @MainActor
 final class TextInjector: TextInjecting {
-    /// How long to wait after ⌘V before putting the user's clipboard back.
-    /// Long enough for slower targets (Electron apps, browsers) to consume the
-    /// paste, short enough that the clipboard isn't visibly hijacked.
-    private static let restoreDelay: TimeInterval = 0.25
+    /// How long to wait after ⌘V before restoring the user's clipboard.
+    ///
+    /// This must be generous. Chromium-based apps (Slack, VS Code, Discord) read
+    /// the pasteboard asynchronously and more than once — browser process, then
+    /// renderer — so restoring quickly hands the renderer stale or empty data and
+    /// the paste silently produces nothing. Native apps read synchronously on ⌘V
+    /// and are unaffected, which is why terminals worked while Slack didn't.
+    private static let restoreDelay: TimeInterval = 1.5
 
-    func deliver(_ text: String) -> InjectionOutcome {
+    /// Delay between writing the clipboard and posting ⌘V, for the pasteboard
+    /// server round-trip.
+    private static let prePasteDelay: TimeInterval = 0.03
+
+    /// `NX_DEVICELCMDKEYMASK` — "left command physically down". Carbon-era, Qt
+    /// and Java apps read the device-dependent bits and ignore a bare command flag.
+    private static let deviceLeftCommand: UInt64 = 0x0000_0008
+
+    private static let sessionType = NSPasteboard.PasteboardType("com.frigade.yap.session")
+    private static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
+
+    private var targetApp: NSRunningApplication?
+
+    func captureTarget() {
+        targetApp = NSWorkspace.shared.frontmostApplication
+    }
+
+    func deliver(_ text: String) async -> InjectionOutcome {
         let saved = PasteboardSnapshot.capture()
+        let sessionID = UUID().uuidString
 
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        let changeCountAfterWrite = pasteboard.changeCount
+        func placeOnClipboard() -> Int {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+            pasteboard.setString(sessionID, forType: Self.sessionType)
+            pasteboard.setString("", forType: Self.transientType)
+            return pasteboard.changeCount
+        }
 
-        // Only skip when nothing at all has focus. We deliberately do NOT require
-        // the element to look editable: Electron and web content (Slack, VS Code,
-        // browsers) routinely report a generic role with no settable AXValue even
-        // when the caret is sitting in a perfectly good text box. Gating on that
-        // made Yap silently refuse to paste into exactly the apps people use most.
-        guard hasFocusedElement() else {
-            // Leave the text on the clipboard for manual pasting — restoring
-            // here would discard the transcript.
+        // Without Accessibility, synthetic events are dropped. Leave the text
+        // where the user can still get at it.
+        guard AXIsProcessTrusted() else {
+            _ = placeOnClipboard()
             return .leftOnClipboard
         }
 
-        simulatePaste()
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.restoreDelay) {
-            // If the user copied something else in the meantime, leave it alone.
-            guard NSPasteboard.general.changeCount == changeCountAfterWrite else { return }
-            PasteboardSnapshot.restore(saved)
+        if SecureInput.isEnabled {
+            _ = placeOnClipboard()
+            return .blockedBySecureInput(SecureInput.holderName())
         }
+
+        // Make sure the app the user was in is frontmost again before we type.
+        if let target = targetApp, !target.isActive {
+            target.activate()
+            try? await Task.sleep(nanoseconds: 120_000_000)
+        }
+
+        // Insurance rather than a fix: assigning flags explicitly already stops
+        // held modifiers leaking into the event, but some apps track modifier
+        // state from the raw event stream themselves.
+        await waitForModifiersToClear()
+
+        let changeCount = placeOnClipboard()
+        try? await Task.sleep(nanoseconds: UInt64(Self.prePasteDelay * 1_000_000_000))
+
+        // Deliberately no check for whether the focused element looks editable —
+        // Electron and web apps report no focused element at all, so any such
+        // gate silently refuses to paste into Slack, VS Code, Discord and friends.
+        await postPaste()
+
+        scheduleRestore(saved, changeCount: changeCount, sessionID: sessionID)
         return .pasted
     }
 
-    /// `NX_DEVICELCMDKEYMASK` — "left command physically down". Electron and Java
-    /// apps (Slack, VS Code, IntelliJ) ignore a synthetic ⌘V without this bit,
-    /// which is a very common cause of "paste silently does nothing in app X".
-    private static let deviceLeftCommand: UInt64 = 0x0000_0008
+    // MARK: - Private
 
-    private func simulatePaste() {
-        guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
+    private func postPaste() async {
+        // A private source has its own modifier state, so nothing ambient can
+        // bleed into the events we create.
+        guard let source = CGEventSource(stateID: .privateState) else { return }
         source.setLocalEventsFilterDuringSuppressionState(
             [.permitLocalMouseEvents, .permitSystemDefinedEvents],
             state: .eventSuppressionStateSuppressionInterval
@@ -72,28 +116,43 @@ final class TextInjector: TextInjecting {
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
         else { return }
 
+        // Assign flags on both events, never letting them default.
         keyDown.flags = flags
         keyUp.flags = flags
+
+        // The annotated session tap targets the focused app without re-entering
+        // the HID stream, so other apps' event taps (Karabiner, Hammerspoon,
+        // BetterTouchTool) can't intercept or rewrite it.
         keyDown.post(tap: .cgAnnotatedSessionEventTap)
+        try? await Task.sleep(nanoseconds: 8_000_000)
         keyUp.post(tap: .cgAnnotatedSessionEventTap)
     }
 
-    /// Whether anything at all currently has keyboard focus.
-    ///
-    /// This is intentionally a weak test. Determining *editability* across
-    /// AppKit, Electron, Java and web content is not reliably possible, so the
-    /// only question worth asking is whether there's somewhere for keystrokes to
-    /// go. A stray ⌘V into a non-text context is harmless; refusing to paste
-    /// into a real text box is not.
-    private func hasFocusedElement() -> Bool {
-        guard AXIsProcessTrusted() else { return false }
+    private func scheduleRestore(
+        _ saved: [[NSPasteboard.PasteboardType: Data]],
+        changeCount: Int,
+        sessionID: String
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.restoreDelay) {
+            let pasteboard = NSPasteboard.general
+            // Only restore if the clipboard is still the one we wrote — the user
+            // may have copied something in the meantime.
+            guard pasteboard.changeCount == changeCount,
+                  pasteboard.string(forType: Self.sessionType) == sessionID
+            else { return }
+            PasteboardSnapshot.restore(saved)
+        }
+    }
 
-        let systemWide = AXUIElementCreateSystemWide()
-        var focused: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(
-            systemWide, kAXFocusedUIElementAttribute as CFString, &focused
-        )
-        return result == .success && focused != nil
+    /// Polls until no modifier keys are physically held, or the timeout expires.
+    private func waitForModifiersToClear(timeout: TimeInterval = 0.6) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        let watched: NSEvent.ModifierFlags = [.command, .shift, .option, .control, .function]
+
+        while Date() < deadline {
+            if NSEvent.modifierFlags.intersection(watched).isEmpty { return }
+            try? await Task.sleep(nanoseconds: 15_000_000)
+        }
     }
 }
 

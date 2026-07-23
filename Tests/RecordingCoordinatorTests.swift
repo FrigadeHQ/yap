@@ -19,7 +19,10 @@ final class FakeSession: DictationSessioning {
 final class FakeInjector: TextInjecting {
     var outcome: InjectionOutcome = .pasted
     var delivered: [String] = []
-    func deliver(_ text: String) -> InjectionOutcome {
+    var targetCaptures = 0
+
+    func captureTarget() { targetCaptures += 1 }
+    func deliver(_ text: String) async -> InjectionOutcome {
         delivered.append(text)
         return outcome
     }
@@ -87,6 +90,19 @@ struct RecordingCoordinatorTests {
         await coordinator.toggle()
         #expect(coordinator.state == .recording)
         #expect(session.startCalled == 1)
+    }
+
+    @Test func capturesTargetAppBeforeShowingAnyUI() async {
+        let injector = FakeInjector()
+        let hud = FakeHUD()
+        let coordinator = makeCoordinator(injector: injector, hud: hud)
+
+        await coordinator.toggle()
+
+        // Must happen on start, not at insert time, or the HUD could be mistaken
+        // for the target.
+        #expect(injector.targetCaptures == 1)
+        #expect(hud.shown == 1)
     }
 
     @Test func fullCycleInsertsAndSaves() async {

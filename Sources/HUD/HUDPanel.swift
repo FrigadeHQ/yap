@@ -44,8 +44,10 @@ final class HUDPanel: NSPanel {
         guard size.width > 0, size.height > 0 else { return }
         setContentSize(size)
 
+        // The window includes a transparent shadow margin, so offset by it to
+        // keep the visible card where it looks right.
         let x = visible.midX - size.width / 2
-        let y = visible.minY + 96
+        let y = visible.minY + 96 - RecordingHUDView.shadowMargin
         setFrameOrigin(NSPoint(x: x, y: y))
     }
 }

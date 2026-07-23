@@ -48,7 +48,7 @@ struct RecordingHUDView: View {
         .padding(.vertical, Theme.s3)
         // Sized to the content: wide enough for the waveform and controls with a
         // modest gap, rather than a broad empty band in the middle.
-        .frame(width: 386, alignment: .leading)
+        .frame(width: 348, alignment: .leading)
         .background {
             // Regular (not ultraThin) material plus a tint, so text stays legible
             // over both light and dark backdrops.
@@ -63,9 +63,16 @@ struct RecordingHUDView: View {
             RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
                 .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+        .shadow(color: .black.opacity(0.22), radius: 22, y: 8)
+        // Transparent margin so the shadow has room to fall off inside the
+        // window. Without it the window is sized to the card exactly and the
+        // shadow is clipped at the edges, drawing a hard square around the HUD.
+        .padding(Self.shadowMargin)
         .animation(.easeInOut(duration: 0.18), value: model.phase)
     }
+
+    /// Must comfortably exceed the shadow's radius + y offset.
+    static let shadowMargin: CGFloat = 34
 
     private var isRecordingPhase: Bool {
         model.phase == .listening || model.phase == .confirmCancel
