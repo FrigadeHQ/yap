@@ -1,14 +1,12 @@
 import Foundation
 
-/// What the recording HUD is currently showing.
+/// What the recording HUD is currently showing. Deliberately minimal: the HUD
+/// appears while listening, briefly acknowledges that it's transcribing, then
+/// disappears. There is no success/failure state — a result the user can see
+/// land in their text field doesn't need announcing.
 enum HUDPhase: Equatable {
     case listening
     case transcribing
-    /// Finished. `inserted` is true if text was pasted, false if left on the
-    /// clipboard or nothing was captured.
-    case done(inserted: Bool)
-    /// Nothing was heard.
-    case empty
     /// Relaunching to pick up newly granted Accessibility rights.
     case restarting
 }
@@ -22,4 +20,6 @@ protocol HUDControlling: AnyObject {
     func setLevel(_ level: Float)
     func setPartial(_ text: String)
     func hide(after seconds: Double)
+    /// Wires the HUD's confirm (✓) and cancel (✕) buttons.
+    func setActions(onConfirm: @escaping () -> Void, onCancel: @escaping () -> Void)
 }

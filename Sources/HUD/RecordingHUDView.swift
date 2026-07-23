@@ -1,151 +1,133 @@
 import SwiftUI
 
-/// The floating recording HUD. Minimal and quiet: a soft material card with a
-/// status glyph, a live level meter while listening, and an optional preview of
-/// the in-progress transcript.
+/// The floating recording HUD: a quiet card showing that Yap is listening, a
+/// live level meter, a preview of the running transcript, and controls to
+/// finish or discard.
 struct RecordingHUDView: View {
     @Bindable var model: HUDModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.s3) {
             HStack(spacing: Theme.s3) {
-                statusGlyph
-                statusContent
-                Spacer(minLength: 0)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                if model.phase == .listening {
+                    LevelMeter(level: model.level)
+                }
+
+                Spacer(minLength: Theme.s3)
+
+                if model.phase == .listening {
+                    HUDButton(systemName: "xmark", tint: .secondary) {
+                        model.onCancel?()
+                    }
+                    .help("Discard")
+
+                    HUDButton(systemName: "checkmark", tint: Theme.success, prominent: true) {
+                        model.onConfirm?()
+                    }
+                    .help("Finish and insert")
+                }
             }
 
-            if showsPartial {
+            if !model.partial.isEmpty, model.phase != .restarting {
                 Text(model.partial)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12.5))
+                    // Full-strength primary: on a translucent panel, .secondary
+                    // over a light backdrop is effectively invisible.
+                    .foregroundStyle(.primary.opacity(0.85))
                     .lineLimit(2)
                     .truncationMode(.head)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity)
             }
         }
         .padding(.horizontal, Theme.s4)
         .padding(.vertical, Theme.s3 + 2)
-        .frame(width: 340, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+        .frame(width: 380, alignment: .leading)
+        .background {
+            // Regular (not ultraThin) material plus a tint, so text stays legible
+            // over both light and dark backdrops.
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
+                    .fill(.regularMaterial)
+                RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
+                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.5))
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
+                .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.18), radius: 20, y: 8)
-        .animation(.easeInOut(duration: 0.2), value: model.phase)
-        .animation(.easeInOut(duration: 0.2), value: showsPartial)
+        .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+        .animation(.easeInOut(duration: 0.18), value: model.phase)
     }
 
-    // MARK: - Pieces
-
-    @ViewBuilder
-    private var statusGlyph: some View {
+    private var title: String {
         switch model.phase {
-        case .listening:
-            RecordingDot()
-        case .transcribing:
-            ProgressView()
-                .controlSize(.small)
-                .frame(width: 18, height: 18)
-        case .done(let inserted):
-            Image(systemName: inserted ? "checkmark.circle.fill" : "doc.on.clipboard")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(inserted ? Theme.success : .secondary)
-        case .empty:
-            Image(systemName: "waveform.slash")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.secondary)
-        case .restarting:
-            Image(systemName: "arrow.clockwise")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.secondary)
+        case .listening: return "Listening"
+        case .transcribing: return "Transcribing…"
+        case .restarting: return "Restarting Yap"
         }
-    }
-
-    @ViewBuilder
-    private var statusContent: some View {
-        switch model.phase {
-        case .listening:
-            HStack(spacing: Theme.s3) {
-                Text("Listening")
-                    .font(.system(size: 13, weight: .semibold))
-                LevelMeter(level: model.level)
-            }
-        case .transcribing:
-            Text("Transcribing…")
-                .font(.system(size: 13, weight: .semibold))
-        case .done(let inserted):
-            Text(inserted ? "Inserted" : "Copied — paste manually")
-                .font(.system(size: 13, weight: .semibold))
-        case .empty:
-            Text("Didn't catch that")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-        case .restarting:
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Restarting Yap")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("Applying Accessibility access")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var showsPartial: Bool {
-        if case .listening = model.phase, !model.partial.isEmpty { return true }
-        return false
     }
 }
 
-/// A softly pulsing dot indicating live recording.
-private struct RecordingDot: View {
-    @State private var pulse = false
+/// A small circular control sized for the HUD.
+private struct HUDButton: View {
+    let systemName: String
+    var tint: Color = .secondary
+    var prominent: Bool = false
+    let action: () -> Void
+
+    @State private var hovering = false
 
     var body: some View {
-        Circle()
-            .fill(Theme.recording)
-            .frame(width: 10, height: 10)
-            .overlay(
-                Circle()
-                    .stroke(Theme.recording.opacity(0.5), lineWidth: 6)
-                    .scaleEffect(pulse ? 1.9 : 1.0)
-                    .opacity(pulse ? 0 : 0.6)
-            )
-            .frame(width: 18, height: 18)
-            .onAppear {
-                withAnimation(.easeOut(duration: 1.1).repeatForever(autoreverses: false)) {
-                    pulse = true
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(prominent ? Color.white : tint)
+                .frame(width: 24, height: 24)
+                .background {
+                    Circle().fill(
+                        prominent
+                            ? Theme.success.opacity(hovering ? 1.0 : 0.9)
+                            : Color.primary.opacity(hovering ? 0.14 : 0.08)
+                    )
                 }
-            }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
     }
 }
 
-/// A row of thin bars that respond to the live audio level.
+/// A row of bars that track the live audio level.
 private struct LevelMeter: View {
     let level: Float
-    private let barCount = 5
+    private let barCount = 7
+    private let minHeight: CGFloat = 3
+    private let maxHeight: CGFloat = 20
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(alignment: .center, spacing: 3) {
             ForEach(0..<barCount, id: \.self) { index in
                 Capsule()
-                    .fill(Color.primary.opacity(0.75))
+                    .fill(Color.primary.opacity(0.8))
                     .frame(width: 3, height: height(for: index))
             }
         }
-        .frame(height: 18)
-        .animation(.easeOut(duration: 0.12), value: level)
+        .frame(height: maxHeight)
+        // Short spring reads as organic motion rather than a stepping meter.
+        .animation(.spring(response: 0.16, dampingFraction: 0.62), value: level)
     }
 
     private func height(for index: Int) -> CGFloat {
-        // Center bars react more than the edges, for an organic look.
-        let center = Double(barCount - 1) / 2
-        let distance = abs(Double(index) - center) / center
-        let weight = 1.0 - distance * 0.5
-        let base: CGFloat = 4
-        let span: CGFloat = 14
-        return base + span * CGFloat(Double(level) * weight)
+        // Centre bars react most, edges least, so it moves like a waveform.
+        let centre = Double(barCount - 1) / 2
+        let distance = abs(Double(index) - centre) / centre
+        let weight = 1.0 - distance * 0.55
+        let scaled = Double(level) * weight
+        return minHeight + (maxHeight - minHeight) * CGFloat(scaled)
     }
 }

@@ -35,11 +35,19 @@ final class FakeHistory: HistoryStoring {
 final class FakeHUD: HUDControlling {
     var phases: [HUDPhase] = []
     var shown = 0
+    var hidden = 0
+    var onConfirm: (() -> Void)?
+    var onCancel: (() -> Void)?
+
     func show(device: String?) { shown += 1 }
     func setPhase(_ phase: HUDPhase) { phases.append(phase) }
     func setLevel(_ level: Float) {}
     func setPartial(_ text: String) {}
-    func hide(after seconds: Double) {}
+    func hide(after seconds: Double) { hidden += 1 }
+    func setActions(onConfirm: @escaping () -> Void, onCancel: @escaping () -> Void) {
+        self.onConfirm = onConfirm
+        self.onCancel = onCancel
+    }
 }
 
 final class FakeSounds: SoundPlaying {
@@ -125,6 +133,31 @@ struct RecordingCoordinatorTests {
         // Still saved to history even when it couldn't be pasted.
         #expect(history.saved == ["hello world"])
         #expect(coordinator.lastOutcome == .leftOnClipboard)
+    }
+
+    @Test func cancelDiscardsWithoutInsertingOrSaving() async {
+        let session = FakeSession()
+        let injector = FakeInjector()
+        let history = FakeHistory()
+        let coordinator = makeCoordinator(session: session, injector: injector, history: history)
+
+        await coordinator.toggle() // start
+        await coordinator.cancel()
+
+        #expect(coordinator.state == .idle)
+        #expect(session.stopCalled == 1) // capture is still torn down
+        #expect(injector.delivered.isEmpty)
+        #expect(history.saved.isEmpty)
+    }
+
+    @Test func cancelIsIgnoredWhenNotRecording() async {
+        let session = FakeSession()
+        let coordinator = makeCoordinator(session: session)
+
+        await coordinator.cancel()
+
+        #expect(coordinator.state == .idle)
+        #expect(session.stopCalled == 0)
     }
 
     @Test func trimsWhitespaceBeforeInserting() async {

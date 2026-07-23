@@ -40,6 +40,21 @@ final class RecordingCoordinator {
 
         session.onLevel = { [weak self] level in self?.hud.setLevel(level) }
         session.onPartial = { [weak self] text in self?.hud.setPartial(text) }
+
+        hud.setActions(
+            onConfirm: { [weak self] in Task { await self?.toggle() } },
+            onCancel: { [weak self] in Task { await self?.cancel() } }
+        )
+    }
+
+    /// Discards the in-flight dictation: nothing is inserted and nothing is saved.
+    func cancel() async {
+        guard state == .recording else { return }
+        state = .transcribing
+        sounds.playStop()
+        hud.hide(after: 0)
+        _ = try? await session.stop()
+        state = .idle
     }
 
     /// Called by the global hotkey (and the menu Start/Stop button).
@@ -65,8 +80,7 @@ final class RecordingCoordinator {
             try await session.start()
         } catch {
             NSLog("Yap: failed to start recording: \(error.localizedDescription)")
-            hud.setPhase(.done(inserted: false))
-            hud.hide(after: 1.4)
+            hud.hide(after: 0)
             state = .idle
         }
     }
@@ -81,8 +95,7 @@ final class RecordingCoordinator {
             let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard !text.isEmpty else {
-                hud.setPhase(.empty)
-                hud.hide(after: 1.1)
+                hud.hide(after: 0)
                 state = .idle
                 return
             }
@@ -94,12 +107,10 @@ final class RecordingCoordinator {
             let duration = startedAt.map { Date().timeIntervalSince($0) }
             history.save(text: text, duration: duration, device: deviceName())
 
-            hud.setPhase(.done(inserted: outcome == .pasted))
-            hud.hide(after: 0.9)
+            hud.hide(after: 0)
         } catch {
             NSLog("Yap: failed to finish recording: \(error.localizedDescription)")
-            hud.setPhase(.done(inserted: false))
-            hud.hide(after: 1.1)
+            hud.hide(after: 0)
         }
         state = .idle
     }

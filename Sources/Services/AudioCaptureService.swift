@@ -17,7 +17,8 @@ final class AudioCaptureService {
         input.removeTap(onBus: 0)
         let format = input.outputFormat(forBus: 0)
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
+        // 2048 frames ≈ 23 level updates/sec, which the meter needs to look alive.
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
             guard let self else { return }
             self.onBuffer?(buffer)
             self.onLevel?(AudioLevel.normalized(from: buffer))

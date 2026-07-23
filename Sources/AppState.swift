@@ -113,9 +113,10 @@ final class AppState {
     }
 
     func openSettings() {
+        // Tall enough to show every section without scrolling.
         WindowManager.shared.show(
             id: "settings", title: "Settings",
-            size: NSSize(width: 460, height: 560), resizable: false
+            size: NSSize(width: 460, height: 790), resizable: false
         ) { SettingsView().environment(self) }
     }
 

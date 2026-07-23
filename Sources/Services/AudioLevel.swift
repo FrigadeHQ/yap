@@ -19,11 +19,20 @@ enum AudioLevel {
         return normalized(rms: rms)
     }
 
-    /// Maps an RMS amplitude (0...1) to a 0...1 meter value via dBFS with a -60 dB floor.
+    /// Maps an RMS amplitude (0...1) to a 0...1 meter value.
+    ///
+    /// Speech typically sits between -45 dB (room tone) and -10 dB (talking), so
+    /// the window is tightened to that range rather than a full -60 dB sweep —
+    /// otherwise everything bunches into the middle and the meter barely moves.
+    /// The exponent then expands the quiet end so normal speech uses the full
+    /// travel instead of hovering around half height.
     static func normalized(rms: Float) -> Float {
         let clampedRms = max(rms, 1e-7)
         let db = 20 * log10(clampedRms)
-        let floored = max(-60, min(0, db))
-        return (floored + 60) / 60
+        let floor: Float = -45
+        let ceiling: Float = -10
+        let clamped = max(floor, min(ceiling, db))
+        let linear = (clamped - floor) / (ceiling - floor)
+        return pow(linear, 0.7)
     }
 }

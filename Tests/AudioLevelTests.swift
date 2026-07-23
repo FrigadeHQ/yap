@@ -21,8 +21,16 @@ struct AudioLevelTests {
         }
     }
 
-    @Test func flooredBelowMinus60dB() {
-        // -60 dB ≈ rms 0.001; anything quieter floors at 0.
+    @Test func flooredBelowNoiseFloor() {
+        // Anything below the -45 dB floor reads as silence.
         #expect(AudioLevel.normalized(rms: 0.0001) == 0)
+    }
+
+    @Test func speechRangeUsesMostOfTheTravel() {
+        // Quiet speech (~-30 dB) and loud speech (~-14 dB) should be far apart,
+        // otherwise the meter looks static while talking.
+        let quietSpeech = AudioLevel.normalized(rms: 0.0316) // -30 dB
+        let loudSpeech = AudioLevel.normalized(rms: 0.2)     // -14 dB
+        #expect(loudSpeech - quietSpeech > 0.3)
     }
 }

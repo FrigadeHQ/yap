@@ -51,13 +51,13 @@ struct SettingsView: View {
                             set: { app.launchAtLogin.set($0) }
                         )
                     )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s2)
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
                         title: "Sound feedback",
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
                     )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s2)
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
                         title: "Show in Dock",
                         subtitle: "Turn off to run from the menu bar only.",
@@ -97,13 +97,13 @@ struct SettingsView: View {
                         granted: app.permissions.microphone == .granted,
                         action: { Task { await app.permissions.requestMicrophone() } }
                     )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s2)
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     PermissionRow(
                         title: "Speech Recognition",
                         granted: app.permissions.speech == .granted,
                         action: { Task { await app.permissions.requestSpeech() } }
                     )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s2)
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     PermissionRow(
                         title: "Accessibility",
                         granted: app.permissions.accessibility,
@@ -146,20 +146,25 @@ struct SettingsView: View {
     }
 }
 
+/// Label on the left, switch hard-right. Using `Toggle`'s own label would let
+/// each row's text width push its switch to a different x, leaving the column ragged.
 private struct SettingsToggleRow: View {
     let title: String
     let subtitle: String
     @Binding var isOn: Bool
 
     var body: some View {
-        Toggle(isOn: $isOn) {
+        HStack(alignment: .center, spacing: Theme.s3) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13, weight: .medium))
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
             }
+            Spacer(minLength: Theme.s3)
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
         }
-        .toggleStyle(.switch)
-        .padding(.horizontal, Theme.s2)
+        .padding(.horizontal, Theme.s3)
         .padding(.vertical, Theme.s2 + 2)
     }
 }
@@ -184,7 +189,7 @@ private struct PermissionRow: View {
                     .font(.system(size: 12, weight: .medium))
             }
         }
-        .padding(.horizontal, Theme.s2)
+        .padding(.horizontal, Theme.s3)
         .padding(.vertical, Theme.s2 + 2)
     }
 }

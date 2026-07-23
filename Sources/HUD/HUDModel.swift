@@ -8,4 +8,7 @@ final class HUDModel {
     var level: Float = 0
     var partial: String = ""
     var device: String?
+
+    var onConfirm: (() -> Void)?
+    var onCancel: (() -> Void)?
 }
