@@ -6,7 +6,7 @@ import SwiftUI
 final class HUDPanel: NSPanel {
     init(model: HUDModel) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 340, height: 80),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 80),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -35,7 +35,7 @@ final class HUDPanel: NSPanel {
             ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
         layoutIfNeeded()
-        let size = contentView?.fittingSize ?? NSSize(width: 340, height: 80)
+        let size = contentView?.fittingSize ?? NSSize(width: 440, height: 80)
         setContentSize(size)
 
         let x = visible.midX - size.width / 2

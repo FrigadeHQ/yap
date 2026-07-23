@@ -52,17 +52,42 @@ struct SettingsView: View {
     }
 
     private var shortcutSection: some View {
-        VStack(alignment: .leading, spacing: Theme.s3) {
+        @Bindable var app = app
+        return VStack(alignment: .leading, spacing: Theme.s3) {
             SectionLabel("Shortcut")
-            Card {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Toggle dictation").font(.system(size: 13, weight: .medium))
-                        Text("Press once to start, again to stop.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+            Card(padding: Theme.s2) {
+                VStack(spacing: 0) {
+                    HStack(spacing: Theme.s3) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Toggle dictation").font(.system(size: 13, weight: .medium))
+                            Text("Press once to start, again to stop.")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: Theme.s3)
+                        KeyboardShortcuts.Recorder(for: .toggleRecording)
                     }
-                    Spacer()
-                    KeyboardShortcuts.Recorder(for: .toggleRecording)
+                    .padding(.horizontal, Theme.s3)
+                    .padding(.vertical, Theme.s2 + 2)
+
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+
+                    HStack(spacing: Theme.s3) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Single modifier key").font(.system(size: 13, weight: .medium))
+                            Text("Tap a modifier on its own, like Right Shift.")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: Theme.s3)
+                        Picker("", selection: $app.modifierTrigger) {
+                            ForEach(ModifierTrigger.allCases) { trigger in
+                                Text(trigger.title).tag(trigger)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 168)
+                    }
+                    .padding(.horizontal, Theme.s3)
+                    .padding(.vertical, Theme.s2 + 2)
                 }
             }
         }

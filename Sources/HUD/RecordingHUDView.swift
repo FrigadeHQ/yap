@@ -14,10 +14,10 @@ struct RecordingHUDView: View {
                     .foregroundStyle(.primary)
 
                 if model.phase == .listening {
-                    LevelMeter(level: model.level)
+                    Waveform(levels: model.levels)
                 }
 
-                Spacer(minLength: Theme.s3)
+                Spacer(minLength: Theme.s2)
 
                 if model.phase == .listening {
                     HUDButton(systemName: "xmark", tint: .secondary) {
@@ -45,7 +45,7 @@ struct RecordingHUDView: View {
         }
         .padding(.horizontal, Theme.s4)
         .padding(.vertical, Theme.s3 + 2)
-        .frame(width: 380, alignment: .leading)
+        .frame(width: 440, alignment: .leading)
         .background {
             // Regular (not ultraThin) material plus a tint, so text stays legible
             // over both light and dark backdrops.
@@ -102,32 +102,38 @@ private struct HUDButton: View {
     }
 }
 
-/// A row of bars that track the live audio level.
-private struct LevelMeter: View {
-    let level: Float
-    private let barCount = 7
-    private let minHeight: CGFloat = 3
-    private let maxHeight: CGFloat = 20
+/// A scrolling waveform. Each bar is one moment in time — newest on the right,
+/// older samples drifting left — so speech leaves a visible trace instead of the
+/// whole meter rising and falling as one.
+private struct Waveform: View {
+    let levels: [Float]
+
+    private let barWidth: CGFloat = 2.5
+    private let spacing: CGFloat = 2
+    private let minHeight: CGFloat = 2.5
+    private let maxHeight: CGFloat = 22
 
     var body: some View {
-        HStack(alignment: .center, spacing: 3) {
-            ForEach(0..<barCount, id: \.self) { index in
+        HStack(alignment: .center, spacing: spacing) {
+            ForEach(Array(levels.enumerated()), id: \.offset) { index, level in
                 Capsule()
-                    .fill(Color.primary.opacity(0.8))
-                    .frame(width: 3, height: height(for: index))
+                    .fill(Color.primary.opacity(opacity(for: index)))
+                    .frame(width: barWidth, height: height(for: level))
             }
         }
         .frame(height: maxHeight)
-        // Short spring reads as organic motion rather than a stepping meter.
-        .animation(.spring(response: 0.16, dampingFraction: 0.62), value: level)
+        // Just enough to smooth the step between samples without adding lag.
+        .animation(.easeOut(duration: 0.06), value: levels)
     }
 
-    private func height(for index: Int) -> CGFloat {
-        // Centre bars react most, edges least, so it moves like a waveform.
-        let centre = Double(barCount - 1) / 2
-        let distance = abs(Double(index) - centre) / centre
-        let weight = 1.0 - distance * 0.55
-        let scaled = Double(level) * weight
-        return minHeight + (maxHeight - minHeight) * CGFloat(scaled)
+    private func height(for level: Float) -> CGFloat {
+        minHeight + (maxHeight - minHeight) * CGFloat(max(0, min(1, level)))
+    }
+
+    /// Older samples fade out, which gives the trace a sense of direction.
+    private func opacity(for index: Int) -> Double {
+        guard levels.count > 1 else { return 0.85 }
+        let age = Double(index) / Double(levels.count - 1)
+        return 0.28 + 0.57 * age
     }
 }

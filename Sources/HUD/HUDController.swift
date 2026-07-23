@@ -21,6 +21,7 @@ final class HUDController: HUDControlling {
         model.device = device
         model.partial = ""
         model.level = 0
+        model.levels = Array(repeating: 0, count: HUDModel.waveformSampleCount)
         model.phase = .listening
         smoothedLevel = 0
 
@@ -36,9 +37,17 @@ final class HUDController: HUDControlling {
     }
 
     func setLevel(_ level: Float) {
-        let coefficient: Float = level > smoothedLevel ? 0.6 : 0.12
+        // Very fast attack keeps transients visible; gentler release lets the
+        // trace fall away instead of collapsing between syllables.
+        let coefficient: Float = level > smoothedLevel ? 0.75 : 0.22
         smoothedLevel += (level - smoothedLevel) * coefficient
         model.level = smoothedLevel
+
+        // Scroll the waveform one sample to the left.
+        var samples = model.levels
+        samples.removeFirst()
+        samples.append(smoothedLevel)
+        model.levels = samples
     }
 
     func setPartial(_ text: String) {

@@ -22,9 +22,19 @@ final class AppState {
     /// Which page the main window is showing.
     var mainPage: MainPage = .settings
 
+    /// Optional single-modifier trigger (e.g. tap Right Shift), alongside the
+    /// regular key combination.
+    var modifierTrigger: ModifierTrigger {
+        didSet {
+            UserDefaults.standard.set(modifierTrigger.rawValue, forKey: "modifierTrigger")
+            modifierHotkeys.trigger = modifierTrigger
+        }
+    }
+
     private(set) var coordinator: RecordingCoordinator!
 
     private let hotkeys = HotkeyManager()
+    private let modifierHotkeys = ModifierHotkeyMonitor()
     private let hud = HUDController()
     private let sounds = SystemSoundPlayer()
     private let deviceObserver = DefaultInputObserver()
@@ -38,6 +48,9 @@ final class AppState {
         }
 
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
+        modifierTrigger = ModifierTrigger(
+            rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
+        ) ?? .none
         currentInputName = AudioDevices.defaultInputName()
 
         let history = HistoryStore(context: modelContainer.mainContext)
@@ -68,6 +81,13 @@ final class AppState {
             guard let self else { return }
             Task { await self.coordinator.toggle() }
         }
+
+        modifierHotkeys.onTap = { [weak self] in
+            guard let self else { return }
+            Task { await self.coordinator.toggle() }
+        }
+        modifierHotkeys.trigger = modifierTrigger
+        modifierHotkeys.start()
 
         deviceObserver.start { [weak self] name in
             Task { @MainActor in self?.currentInputName = name }
