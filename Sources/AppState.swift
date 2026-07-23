@@ -57,10 +57,8 @@ final class AppState {
         permissions.refresh()
         launchAtLogin.refresh()
 
-        permissions.onAccessibilityGranted = { [weak self] in
-            guard let self, self.permissions.needsRestartForAccessibility else { return }
-            self.restartForAccessibility()
-        }
+        // Accessibility takes effect live — no restart needed. Observing simply
+        // keeps the UI honest the moment the user grants it.
         permissions.startObserving()
 
         hotkeys.onToggle { [weak self] in
@@ -78,16 +76,31 @@ final class AppState {
         Task { await coordinator.toggle() }
     }
 
-    /// Relaunches so newly granted Accessibility rights take effect. Skipped
-    /// while a dictation is in flight so the user is never cut off mid-sentence
-    /// — the Settings and onboarding screens offer a manual restart in that case.
-    func restartForAccessibility() {
+    /// Manual restart escape hatch. Never runs mid-dictation — that would throw
+    /// away audio the user already spoke.
+    func restartApp() {
         guard coordinator.state == .idle else { return }
         hud.show(device: nil)
         hud.setPhase(.restarting)
         Task {
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            try? await Task.sleep(nanoseconds: 900_000_000)
             AppRelauncher.relaunch()
+        }
+    }
+
+    /// Surfaces a window when the user opens Yap from Finder/Dock. Without this,
+    /// launching an already-running agent app appears to do nothing at all.
+    func presentMainWindow() {
+        if permissions.allGranted {
+            WindowManager.shared.show(
+                id: "settings", title: "Settings",
+                size: NSSize(width: 460, height: 520), resizable: false
+            ) { SettingsView().environment(self) }
+        } else {
+            WindowManager.shared.show(
+                id: "onboarding", title: "Welcome to Yap",
+                size: NSSize(width: 460, height: 560), resizable: false
+            ) { OnboardingView().environment(self) }
         }
     }
 }

@@ -109,11 +109,22 @@ struct SettingsView: View {
                 }
             }
 
-            if app.permissions.needsRestartForAccessibility {
-                Button("Restart Yap to apply Accessibility") {
-                    app.restartForAccessibility()
+            HStack(spacing: Theme.s2) {
+                if !app.permissions.accessibility {
+                    Button("Reset & re-grant") {
+                        app.permissions.resetAccessibilityGrant()
+                    }
+                    .buttonStyle(GhostButtonStyle())
                 }
-                .buttonStyle(GhostButtonStyle())
+                Button("Restart Yap") { app.restartApp() }
+                    .buttonStyle(GhostButtonStyle())
+            }
+
+            if !app.permissions.accessibility {
+                Text("If Accessibility looks switched on but Yap still can't paste, the grant is stale after a rebuild — reset and grant it again.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

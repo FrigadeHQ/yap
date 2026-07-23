@@ -17,19 +17,6 @@ final class PermissionsManager {
     var speech: Status = .notDetermined
     var accessibility: Bool = false
 
-    /// Whether we were already trusted when this process started. Accessibility
-    /// rights granted *after* launch don't reliably apply to the running
-    /// process, so a grant that arrives later means we need to relaunch.
-    private let trustedAtLaunch: Bool = AXIsProcessTrusted()
-
-    /// True once Accessibility is granted but only after we launched untrusted.
-    var needsRestartForAccessibility: Bool {
-        accessibility && !trustedAtLaunch
-    }
-
-    /// Called when Accessibility flips from denied to granted while running.
-    var onAccessibilityGranted: (() -> Void)?
-
     private var pollTimer: Timer?
 
     var allGranted: Bool {
@@ -42,33 +29,72 @@ final class PermissionsManager {
         accessibility = AXIsProcessTrusted()
     }
 
-    /// Watches for Accessibility being granted in System Settings while we run.
-    /// Uses the system's accessibility-change notification, backed by a slow
-    /// poll because that notification is undocumented and can be missed.
+    /// Watches for Accessibility being granted in System Settings while we run,
+    /// so the UI updates the moment it happens and no restart is needed.
+    ///
+    /// Three signals, because none alone is dependable: the (undocumented)
+    /// system accessibility-change notification for latency, app activation
+    /// (Apple DTS's suggested mechanism), and a sparse poll as the backstop.
     func startObserving() {
         DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("com.apple.accessibility.api"),
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            // The notification can arrive marginally before the trust flips.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Fires slightly before the trust value actually flips.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self?.refreshAndNotify()
             }
         }
 
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
             Task { @MainActor in self?.refreshAndNotify() }
         }
+
+        setPolling(interval: accessibility ? 5.0 : 1.0)
+    }
+
+    private func setPolling(interval: TimeInterval) {
+        pollTimer?.invalidate()
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshAndNotify() }
+        }
+        timer.tolerance = interval / 4
+        // .common so it keeps firing while a menu is being tracked.
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
     }
 
     private func refreshAndNotify() {
         let wasGranted = accessibility
         refresh()
-        guard !wasGranted, accessibility else { return }
-        pollTimer?.invalidate()
-        pollTimer = nil
-        onAccessibilityGranted?()
+        guard wasGranted != accessibility else { return }
+        // Back off once granted; poll attentively while we're still waiting.
+        setPolling(interval: accessibility ? 5.0 : 1.0)
+    }
+
+    /// Ad-hoc signed builds have no stable designated requirement, so every
+    /// rebuild looks like a different app to TCC. The tell-tale symptom is the
+    /// checkbox appearing checked in System Settings while `AXIsProcessTrusted()`
+    /// still returns false. Clearing the stale record lets the user re-grant.
+    func resetAccessibilityGrant() {
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        task.arguments = ["reset", "Accessibility", bundleID]
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            NSLog("Yap: tccutil reset failed: \(error.localizedDescription)")
+        }
+        refresh()
+        requestAccessibility()
+        openAccessibilitySettings()
     }
 
     func requestMicrophone() async {

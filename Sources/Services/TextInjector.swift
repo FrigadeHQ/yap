@@ -48,17 +48,29 @@ final class TextInjector: TextInjecting {
         return .pasted
     }
 
+    /// `NX_DEVICELCMDKEYMASK` — "left command physically down". Electron and Java
+    /// apps (Slack, VS Code, IntelliJ) ignore a synthetic ⌘V without this bit,
+    /// which is a very common cause of "paste silently does nothing in app X".
+    private static let deviceLeftCommand: UInt64 = 0x0000_0008
+
     private func simulatePaste() {
-        let source = CGEventSource(stateID: .hidSystemState)
+        guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
+        source.setLocalEventsFilterDuringSuppressionState(
+            [.permitLocalMouseEvents, .permitSystemDefinedEvents],
+            state: .eventSuppressionStateSuppressionInterval
+        )
+
+        let flags = CGEventFlags(rawValue: CGEventFlags.maskCommand.rawValue | Self.deviceLeftCommand)
         let vKey = CGKeyCode(kVK_ANSI_V)
 
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
-        keyDown?.flags = .maskCommand
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
-        keyUp?.flags = .maskCommand
+        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
+        else { return }
 
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        keyDown.flags = flags
+        keyUp.flags = flags
+        keyDown.post(tap: .cgAnnotatedSessionEventTap)
+        keyUp.post(tap: .cgAnnotatedSessionEventTap)
     }
 
     private func isFocusedElementEditable() -> Bool {

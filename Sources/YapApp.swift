@@ -37,19 +37,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        // A relaunch briefly leaves the previous instance alive.
+        AppRelauncher.terminateOtherInstances()
+
         let app = AppState.shared
         app.bootstrap()
 
         // Show onboarding on first run or whenever a permission is missing.
         if !app.permissions.allGranted {
-            WindowManager.shared.show(
-                id: "onboarding",
-                title: "Welcome to Yap",
-                size: NSSize(width: 460, height: 560),
-                resizable: false
-            ) {
-                OnboardingView().environment(app)
-            }
+            app.presentMainWindow()
         }
+    }
+
+    /// Yap has no Dock icon and no default window, so opening it from Finder
+    /// would otherwise look like nothing happened.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        AppState.shared.presentMainWindow()
+        return true
     }
 }
