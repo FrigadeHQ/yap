@@ -19,6 +19,14 @@ final class AppState {
         didSet { UserDefaults.standard.set(soundsEnabled, forKey: "soundsEnabled") }
     }
 
+    /// Whether Yap appears in the Dock. Off makes it menu-bar-only.
+    var showsDockIcon: Bool {
+        didSet {
+            UserDefaults.standard.set(showsDockIcon, forKey: "showsDockIcon")
+            applyActivationPolicy()
+        }
+    }
+
     private(set) var coordinator: RecordingCoordinator!
 
     private let hotkeys = HotkeyManager()
@@ -35,6 +43,7 @@ final class AppState {
         }
 
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
+        showsDockIcon = (UserDefaults.standard.object(forKey: "showsDockIcon") as? Bool) ?? true
         currentInputName = AudioDevices.defaultInputName()
 
         let history = HistoryStore(context: modelContainer.mainContext)
@@ -71,6 +80,11 @@ final class AppState {
         }
     }
 
+    /// Shows or hides the Dock tile to match the user's preference.
+    func applyActivationPolicy() {
+        NSApp.setActivationPolicy(showsDockIcon ? .regular : .accessory)
+    }
+
     /// Toggles recording (used by the menu Start/Stop button).
     func toggleRecording() {
         Task { await coordinator.toggle() }
@@ -92,15 +106,34 @@ final class AppState {
     /// launching an already-running agent app appears to do nothing at all.
     func presentMainWindow() {
         if permissions.allGranted {
-            WindowManager.shared.show(
-                id: "settings", title: "Settings",
-                size: NSSize(width: 460, height: 520), resizable: false
-            ) { SettingsView().environment(self) }
+            openSettings()
         } else {
-            WindowManager.shared.show(
-                id: "onboarding", title: "Welcome to Yap",
-                size: NSSize(width: 460, height: 560), resizable: false
-            ) { OnboardingView().environment(self) }
+            openOnboarding()
         }
+    }
+
+    func openSettings() {
+        WindowManager.shared.show(
+            id: "settings", title: "Settings",
+            size: NSSize(width: 460, height: 560), resizable: false
+        ) { SettingsView().environment(self) }
+    }
+
+    func openHistory() {
+        WindowManager.shared.show(
+            id: "history", title: "History",
+            size: NSSize(width: 480, height: 580)
+        ) {
+            HistoryView()
+                .environment(self)
+                .modelContainer(self.modelContainer)
+        }
+    }
+
+    func openOnboarding() {
+        WindowManager.shared.show(
+            id: "onboarding", title: "Welcome to Yap",
+            size: NSSize(width: 460, height: 560), resizable: false
+        ) { OnboardingView().environment(self) }
     }
 }

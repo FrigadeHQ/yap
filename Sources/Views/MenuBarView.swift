@@ -118,23 +118,7 @@ struct MenuBarView: View {
 
     // MARK: - Window openers
 
-    private func openHistory() {
-        WindowManager.shared.show(id: "history", title: "History", size: NSSize(width: 480, height: 580)) {
-            HistoryView()
-                .environment(app)
-                .modelContainer(app.modelContainer)
-        }
-    }
-
-    private func openSettings() {
-        WindowManager.shared.show(id: "settings", title: "Settings", size: NSSize(width: 460, height: 520), resizable: false) {
-            SettingsView().environment(app)
-        }
-    }
-
-    private func openOnboarding() {
-        WindowManager.shared.show(id: "onboarding", title: "Welcome to Yap", size: NSSize(width: 460, height: 560), resizable: false) {
-            OnboardingView().environment(app)
-        }
-    }
+    private func openHistory() { app.openHistory() }
+    private func openSettings() { app.openSettings() }
+    private func openOnboarding() { app.openOnboarding() }
 }

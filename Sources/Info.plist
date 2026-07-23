@@ -20,10 +20,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleIconFile</key>
+	<string>Yap</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<!-- Regular app so it gets a Dock icon. Users can hide it in Settings,
+	     which switches the activation policy to .accessory at runtime. -->
 	<key>LSUIElement</key>
-	<true/>
+	<false/>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT Licensed. Open source.</string>
 	<key>NSMicrophoneUsageDescription</key>

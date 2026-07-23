@@ -57,6 +57,12 @@ struct SettingsView: View {
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
                     )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s2)
+                    SettingsToggleRow(
+                        title: "Show in Dock",
+                        subtitle: "Turn off to run from the menu bar only.",
+                        isOn: $app.showsDockIcon
+                    )
                 }
             }
         }

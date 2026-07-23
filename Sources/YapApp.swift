@@ -35,12 +35,11 @@ struct YapApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
-
         // A relaunch briefly leaves the previous instance alive.
         AppRelauncher.terminateOtherInstances()
 
         let app = AppState.shared
+        app.applyActivationPolicy()
         app.bootstrap()
 
         // Show onboarding on first run or whenever a permission is missing.
@@ -54,5 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         AppState.shared.presentMainWindow()
         return true
+    }
+
+    /// Yap is a background dictation tool — closing a window must not quit it.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 }

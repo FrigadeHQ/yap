@@ -56,8 +56,11 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            Button(app.permissions.allGranted ? "Done" : "Continue") {
+            // Hands off to Settings so the user lands somewhere they can set
+            // their shortcut, rather than on an empty desktop.
+            Button(app.permissions.allGranted ? "Continue to Settings" : "Continue") {
                 NSApp.keyWindow?.close()
+                app.openSettings()
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!app.permissions.allGranted)
