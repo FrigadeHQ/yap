@@ -33,7 +33,12 @@ final class TextInjector: TextInjecting {
         pasteboard.setString(text, forType: .string)
         let changeCountAfterWrite = pasteboard.changeCount
 
-        guard isFocusedElementEditable() else {
+        // Only skip when nothing at all has focus. We deliberately do NOT require
+        // the element to look editable: Electron and web content (Slack, VS Code,
+        // browsers) routinely report a generic role with no settable AXValue even
+        // when the caret is sitting in a perfectly good text box. Gating on that
+        // made Yap silently refuse to paste into exactly the apps people use most.
+        guard hasFocusedElement() else {
             // Leave the text on the clipboard for manual pasting — restoring
             // here would discard the transcript.
             return .leftOnClipboard
@@ -73,33 +78,22 @@ final class TextInjector: TextInjecting {
         keyUp.post(tap: .cgAnnotatedSessionEventTap)
     }
 
-    private func isFocusedElementEditable() -> Bool {
+    /// Whether anything at all currently has keyboard focus.
+    ///
+    /// This is intentionally a weak test. Determining *editability* across
+    /// AppKit, Electron, Java and web content is not reliably possible, so the
+    /// only question worth asking is whether there's somewhere for keystrokes to
+    /// go. A stray ⌘V into a non-text context is harmless; refusing to paste
+    /// into a real text box is not.
+    private func hasFocusedElement() -> Bool {
         guard AXIsProcessTrusted() else { return false }
 
         let systemWide = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let focused else { return false }
-        let element = focused as! AXUIElement
-
-        var roleRef: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef)
-        if let role = roleRef as? String {
-            let editableRoles: Set<String> = [
-                kAXTextFieldRole as String,
-                kAXTextAreaRole as String,
-                kAXComboBoxRole as String,
-            ]
-            if editableRoles.contains(role) { return true }
-        }
-
-        // Fallback: a settable AXValue is the most reliable "can I write here" test.
-        var settable: DarwinBoolean = false
-        if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success,
-           settable.boolValue {
-            return true
-        }
-        return false
+        let result = AXUIElementCopyAttributeValue(
+            systemWide, kAXFocusedUIElementAttribute as CFString, &focused
+        )
+        return result == .success && focused != nil
     }
 }
 

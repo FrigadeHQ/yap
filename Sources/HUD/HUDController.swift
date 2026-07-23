@@ -16,8 +16,22 @@ final class HUDController: HUDControlling {
         model.onCancel = onCancel
     }
 
+    /// Builds the panel ahead of time. Creating it on first use meant the very
+    /// first dictation rendered an unlaid-out window for a frame before settling
+    /// into place — the flicker before "Listening" appeared.
+    func prepare() {
+        guard panel == nil else { return }
+        let panel = HUDPanel(model: model)
+        panel.alphaValue = 0
+        panel.reposition()
+        self.panel = panel
+    }
+
     func show(device: String?) {
         hideTask?.cancel()
+
+        // Reset all state BEFORE the panel is on screen, so no stale frame from
+        // the previous session is ever visible.
         model.device = device
         model.partial = ""
         model.level = 0
@@ -25,11 +39,18 @@ final class HUDController: HUDControlling {
         model.phase = .listening
         smoothedLevel = 0
 
-        if panel == nil {
-            panel = HUDPanel(model: model)
+        prepare()
+        guard let panel else { return }
+
+        panel.alphaValue = 0
+        panel.reposition()
+        panel.orderFrontRegardless()
+
+        // Short fade covers any residual first-frame layout settling.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.12
+            panel.animator().alphaValue = 1
         }
-        panel?.reposition()
-        panel?.orderFrontRegardless()
     }
 
     func setPhase(_ phase: HUDPhase) {

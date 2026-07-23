@@ -23,6 +23,12 @@ final class RecordingCoordinator {
 
     private var startedAt: Date?
 
+    /// Escape was pressed once and a second press will cancel.
+    private var cancelArmed = false
+    private var cancelArmTask: Task<Void, Never>?
+    /// How long the second Escape press remains available.
+    private let cancelArmWindow: Duration = .milliseconds(2500)
+
     init(
         session: DictationSessioning,
         injector: TextInjecting,
@@ -50,11 +56,40 @@ final class RecordingCoordinator {
     /// Discards the in-flight dictation: nothing is inserted and nothing is saved.
     func cancel() async {
         guard state == .recording else { return }
+        disarmCancel()
         state = .transcribing
         sounds.playStop()
         hud.hide(after: 0)
         _ = try? await session.stop()
         state = .idle
+    }
+
+    /// Escape is a two-step cancel: the first press arms it and the HUD says so,
+    /// a second press within the window discards. Prevents a stray Escape —
+    /// dismissing a menu, say — from destroying a dictation in progress.
+    func handleEscape() {
+        guard state == .recording else { return }
+
+        if cancelArmed {
+            disarmCancel()
+            Task { await cancel() }
+            return
+        }
+
+        cancelArmed = true
+        hud.setPhase(.confirmCancel)
+        cancelArmTask = Task { [weak self] in
+            try? await Task.sleep(for: self?.cancelArmWindow ?? .milliseconds(2500))
+            guard !Task.isCancelled, let self, self.cancelArmed else { return }
+            self.cancelArmed = false
+            if self.state == .recording { self.hud.setPhase(.listening) }
+        }
+    }
+
+    private func disarmCancel() {
+        cancelArmTask?.cancel()
+        cancelArmTask = nil
+        cancelArmed = false
     }
 
     /// Called by the global hotkey (and the menu Start/Stop button).
@@ -86,6 +121,7 @@ final class RecordingCoordinator {
     }
 
     private func stopRecording() async {
+        disarmCancel()
         state = .transcribing
         sounds.playStop()
         hud.setPhase(.transcribing)

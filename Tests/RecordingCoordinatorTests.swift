@@ -150,6 +150,47 @@ struct RecordingCoordinatorTests {
         #expect(history.saved.isEmpty)
     }
 
+    @Test func firstEscapeArmsCancelButKeepsRecording() async {
+        let session = FakeSession()
+        let hud = FakeHUD()
+        let coordinator = makeCoordinator(session: session, hud: hud)
+
+        await coordinator.toggle()
+        coordinator.handleEscape()
+
+        #expect(coordinator.state == .recording)
+        #expect(hud.phases.contains(.confirmCancel))
+        #expect(session.stopCalled == 0)
+    }
+
+    @Test func secondEscapeDiscardsTheDictation() async {
+        let session = FakeSession()
+        let injector = FakeInjector()
+        let history = FakeHistory()
+        let coordinator = makeCoordinator(session: session, injector: injector, history: history)
+
+        await coordinator.toggle()
+        coordinator.handleEscape() // arm
+        coordinator.handleEscape() // confirm
+
+        // handleEscape spawns the cancel, so let it settle.
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(injector.delivered.isEmpty)
+        #expect(history.saved.isEmpty)
+    }
+
+    @Test func escapeIsIgnoredWhenNotRecording() async {
+        let hud = FakeHUD()
+        let coordinator = makeCoordinator(hud: hud)
+
+        coordinator.handleEscape()
+
+        #expect(coordinator.state == .idle)
+        #expect(!hud.phases.contains(.confirmCancel))
+    }
+
     @Test func cancelIsIgnoredWhenNotRecording() async {
         let session = FakeSession()
         let coordinator = makeCoordinator(session: session)

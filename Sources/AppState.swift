@@ -35,6 +35,7 @@ final class AppState {
 
     private let hotkeys = HotkeyManager()
     private let modifierHotkeys = ModifierHotkeyMonitor()
+    private let escapeMonitor = EscapeMonitor()
     private let hud = HUDController()
     private let sounds = SystemSoundPlayer()
     private let deviceObserver = DefaultInputObserver()
@@ -88,6 +89,18 @@ final class AppState {
         }
         modifierHotkeys.trigger = modifierTrigger
         modifierHotkeys.start()
+
+        escapeMonitor.onEscape = { [weak self] in
+            self?.coordinator.handleEscape()
+        }
+        escapeMonitor.start()
+
+        // Build the HUD window and resolve the speech model up front, so the
+        // first press of the shortcut is immediate rather than paying setup cost.
+        hud.prepare()
+        Task.detached(priority: .utility) {
+            await DictationSession.prewarm()
+        }
 
         deviceObserver.start { [weak self] name in
             Task { @MainActor in self?.currentInputName = name }

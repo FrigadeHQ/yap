@@ -6,7 +6,7 @@ import SwiftUI
 final class HUDPanel: NSPanel {
     init(model: HUDModel) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 80),
+            contentRect: NSRect(x: 0, y: 0, width: 386, height: 76),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -30,12 +30,18 @@ final class HUDPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     /// Positions the panel near the bottom-center of the screen with the cursor.
+    ///
+    /// Layout is forced before measuring: reading `fittingSize` while SwiftUI
+    /// still has a stale layout returns the wrong size, so the panel would appear
+    /// at one size and visibly snap to another.
     func reposition() {
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
             ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
-        layoutIfNeeded()
-        let size = contentView?.fittingSize ?? NSSize(width: 440, height: 80)
+
+        contentView?.layoutSubtreeIfNeeded()
+        let size = contentView?.fittingSize ?? NSSize(width: 386, height: 76)
+        guard size.width > 0, size.height > 0 else { return }
         setContentSize(size)
 
         let x = visible.midX - size.width / 2

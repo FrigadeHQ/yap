@@ -11,15 +11,16 @@ struct RecordingHUDView: View {
             HStack(spacing: Theme.s3) {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(model.phase == .confirmCancel ? Theme.recording : .primary)
+                    .fixedSize(horizontal: true, vertical: false)
 
-                if model.phase == .listening {
+                if isRecordingPhase {
                     Waveform(levels: model.levels)
                 }
 
                 Spacer(minLength: Theme.s2)
 
-                if model.phase == .listening {
+                if isRecordingPhase {
                     HUDButton(systemName: "xmark", tint: .secondary) {
                         model.onCancel?()
                     }
@@ -44,8 +45,10 @@ struct RecordingHUDView: View {
             }
         }
         .padding(.horizontal, Theme.s4)
-        .padding(.vertical, Theme.s3 + 2)
-        .frame(width: 440, alignment: .leading)
+        .padding(.vertical, Theme.s3)
+        // Sized to the content: wide enough for the waveform and controls with a
+        // modest gap, rather than a broad empty band in the middle.
+        .frame(width: 386, alignment: .leading)
         .background {
             // Regular (not ultraThin) material plus a tint, so text stays legible
             // over both light and dark backdrops.
@@ -64,9 +67,14 @@ struct RecordingHUDView: View {
         .animation(.easeInOut(duration: 0.18), value: model.phase)
     }
 
+    private var isRecordingPhase: Bool {
+        model.phase == .listening || model.phase == .confirmCancel
+    }
+
     private var title: String {
         switch model.phase {
         case .listening: return "Listening"
+        case .confirmCancel: return "Press esc again to cancel"
         case .transcribing: return "Transcribing…"
         case .restarting: return "Restarting Yap"
         }

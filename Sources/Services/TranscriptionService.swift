@@ -37,7 +37,7 @@ final class TranscriptionService: StreamingTranscriber {
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
 
-        try await ensureModel(for: transcriber, locale: locale)
+        try await Self.ensureModel(for: transcriber, locale: locale)
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.invalidFormat
@@ -93,7 +93,19 @@ final class TranscriptionService: StreamingTranscriber {
         return result
     }
 
-    private func ensureModel(for transcriber: SpeechTranscriber, locale: Locale) async throws {
+    /// Downloads and reserves the speech model for a locale if needed. Safe to
+    /// call ahead of time at launch so the first dictation isn't held up by it.
+    static func prepareModel(for locale: Locale) async {
+        let transcriber = SpeechTranscriber(
+            locale: locale,
+            transcriptionOptions: [],
+            reportingOptions: [.volatileResults],
+            attributeOptions: [.audioTimeRange]
+        )
+        try? await ensureModel(for: transcriber, locale: locale)
+    }
+
+    private static func ensureModel(for transcriber: SpeechTranscriber, locale: Locale) async throws {
         let installedLocales = await SpeechTranscriber.installedLocales
         let installed = Set(installedLocales.map { $0.identifier(.bcp47) })
 

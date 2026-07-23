@@ -15,7 +15,7 @@ final class SystemSoundPlayer: SoundPlaying {
     // Tink/Basso/Sosumi/Funk, which macOS uses for alerts and errors — they make
     // a normal start-of-dictation feel like something went wrong.
     private let start = NSSound(named: NSSound.Name("Purr"))
-    private let stop = NSSound(named: NSSound.Name("Pop"))
+    private let stop = NSSound(named: NSSound.Name("Glass"))
 
     func playStart() {
         guard enabled() else { return }

@@ -6,6 +6,8 @@ import Foundation
 /// land in their text field doesn't need announcing.
 enum HUDPhase: Equatable {
     case listening
+    /// Escape was pressed once; a second press within the window cancels.
+    case confirmCancel
     case transcribing
     /// Relaunching to pick up newly granted Accessibility rights.
     case restarting
