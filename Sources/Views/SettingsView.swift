@@ -113,6 +113,24 @@ struct SettingsView: View {
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
                     )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    HStack(spacing: Theme.s3) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Paste method").font(.system(size: 13, weight: .medium))
+                            Text(app.pasteMethod.detail)
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: Theme.s3)
+                        Picker("", selection: $app.pasteMethod) {
+                            ForEach(PasteMethod.allCases) { method in
+                                Text(method.title).tag(method)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 140)
+                    }
+                    .padding(.horizontal, Theme.s3)
+                    .padding(.vertical, Theme.s2 + 2)
                 }
             }
         }

@@ -46,6 +46,10 @@ final class TextInjector: TextInjecting {
 
     private var targetApp: NSRunningApplication?
 
+    /// How the paste keystroke is delivered. Standard works nearly everywhere;
+    /// AppleScript is the escape hatch for apps that reject synthetic events.
+    var method: PasteMethod = .standard
+
     func captureTarget() {
         targetApp = NSWorkspace.shared.frontmostApplication
     }
@@ -101,6 +105,21 @@ final class TextInjector: TextInjecting {
     // MARK: - Private
 
     private func postPaste() async {
+        if method == .appleScript {
+            pasteViaAppleScript()
+            return
+        }
+        await postSyntheticPaste()
+    }
+
+    /// Posts a full ⌘V as four events: Command down, V down, V up, Command up.
+    ///
+    /// Posting only a V event with `.maskCommand` set is enough for native apps,
+    /// which read `event.flags` directly — but NOT for Chromium/Electron (Slack,
+    /// Cursor, VS Code, Discord), which rebuilds modifier state from the raw
+    /// event stream. Without a genuine Command *keyDown* it never sees a ⌘V, and
+    /// the paste silently does nothing. Hence the real modifier key events.
+    private func postSyntheticPaste() async {
         // A private source has its own modifier state, so nothing ambient can
         // bleed into the events we create.
         guard let source = CGEventSource(stateID: .privateState) else { return }
@@ -109,23 +128,43 @@ final class TextInjector: TextInjecting {
             state: .eventSuppressionStateSuppressionInterval
         )
 
-        let flags = CGEventFlags(rawValue: CGEventFlags.maskCommand.rawValue | Self.deviceLeftCommand)
+        let commandFlags = CGEventFlags(
+            rawValue: CGEventFlags.maskCommand.rawValue | Self.deviceLeftCommand
+        )
+        let commandKey = CGKeyCode(kVK_Command)
         let vKey = CGKeyCode(kVK_ANSI_V)
 
-        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true),
-              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
-        else { return }
+        func post(_ key: CGKeyCode, down: Bool, flags: CGEventFlags) {
+            guard let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down)
+            else { return }
+            event.flags = flags
+            // The HID tap is where hardware events enter the window server, so
+            // Chromium treats the sequence as genuine typing.
+            event.post(tap: .cghidEventTap)
+        }
 
-        // Assign flags on both events, never letting them default.
-        keyDown.flags = flags
-        keyUp.flags = flags
+        let step: UInt64 = 10_000_000 // 10ms
 
-        // The annotated session tap targets the focused app without re-entering
-        // the HID stream, so other apps' event taps (Karabiner, Hammerspoon,
-        // BetterTouchTool) can't intercept or rewrite it.
-        keyDown.post(tap: .cgAnnotatedSessionEventTap)
-        try? await Task.sleep(nanoseconds: 8_000_000)
-        keyUp.post(tap: .cgAnnotatedSessionEventTap)
+        post(commandKey, down: true, flags: commandFlags)
+        try? await Task.sleep(nanoseconds: step)
+        post(vKey, down: true, flags: commandFlags)
+        try? await Task.sleep(nanoseconds: step)
+        post(vKey, down: false, flags: commandFlags)
+        try? await Task.sleep(nanoseconds: step)
+        post(commandKey, down: false, flags: [])
+    }
+
+    /// Alternative route via System Events. Goes through Apple Events rather than
+    /// the event stream, so it can work where synthetic keystrokes don't.
+    /// Requires the user to allow Yap to control System Events.
+    private func pasteViaAppleScript() {
+        let source = "tell application \"System Events\" to keystroke \"v\" using command down"
+        guard let script = NSAppleScript(source: source) else { return }
+        var error: NSDictionary?
+        script.executeAndReturnError(&error)
+        if let error {
+            NSLog("Yap: AppleScript paste failed: \(error)")
+        }
     }
 
     private func scheduleRestore(
