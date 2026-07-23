@@ -1,70 +1,165 @@
 <div align="center">
 
-# 💬 Yap
+# Yap
 
-**Free, open-source, on-device voice dictation for macOS.**
+**Voice dictation for macOS that runs entirely on your Mac.**
 
-Press a key, speak, press again — your words land in whatever you're typing into.
-No account. No cloud. No API keys. Nothing ever leaves your Mac.
+[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
+[![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black.svg)](https://www.apple.com/macos/)
+[![Swift 6](https://img.shields.io/badge/Swift-6-black.svg)](https://swift.org)
 
-MIT licensed.
+Press a shortcut, talk, press it again. Your words land in whatever text field you were
+using. No account, no API key, no audio leaving your machine.
+
+Built by [Frigade](https://frigade.com).
 
 </div>
 
 ---
 
-Yap is a tiny menu-bar app. Set a global hotkey, press it to start dictating, press
-it again to stop. Yap transcribes your speech **entirely on-device** using Apple's
-Speech framework and pastes the result into the currently focused text field. Every
-transcript is saved to a local history you can re-copy from.
+## What it does
 
-It's an open, minimal alternative to closed-source dictation tools — deliberately
-simple, fast, and private.
+Yap lives in your menu bar and waits for a shortcut. Trigger it and a small window appears
+near the bottom of the screen with a live waveform and a running preview of what you have
+said so far. Press the shortcut again and the text gets pasted into the app you were
+already working in. Every transcript is saved locally, so you can go back and copy
+something again later.
+
+The default shortcut is `⌘⇧D`. You can rebind it, or set a single modifier key instead.
+Tapping right shift on its own works nicely if you have a spare thumb.
+
+## Why we built this
+
+Apple made this problem a lot easier in macOS 26, and we think most people have not noticed
+yet.
+
+Until recently, building decent dictation meant one of two things. You could ship Whisper
+weights inside your app, which means hundreds of megabytes, a slow cold start, and a fan
+that spins up every time someone talks. Or you could call a hosted transcription API, which
+means the audio leaves the machine, somebody needs to manage an API key, and there is a bill
+attached to every minute of speech.
+
+macOS 26 ships `SpeechAnalyzer` and `SpeechTranscriber`. They do streaming speech to text
+on device, the OS manages the models, and the results come back fast enough to show partial
+text while you are still talking. Nothing is uploaded. There is no key to configure and
+nothing to pay per minute.
+
+That changes what a dictation app has to be. It can be small, and it can be private without
+asking you to trust anyone. Yap is roughly two thousand lines of Swift and calls no network
+APIs at all.
+
+We use it internally at Frigade. Most of the team writes faster by talking, particularly for
+the longer messages nobody wants to type twice.
 
 ## Features
 
-- 🎙️ **On-device transcription** — Apple's `SpeechAnalyzer` (macOS 26), no network
-- ⌨️ **Global toggle hotkey** — press to start, press again to stop (fully rebindable)
-- 📋 **Pastes into the focused field** — via the clipboard, then restores it
-- 🕘 **Transcript history** — everything is saved locally so you can re-copy
-- 🎧 **Auto-detects your input** — uses and displays the current default microphone
-- 🚀 **Launch at login** — optional, off by default
-- 🔒 **Private by design** — no telemetry, no account, no cloud
+- On-device transcription through Apple's Speech framework
+- Global shortcut, fully rebindable, with optional single-modifier triggers like right shift
+- Pastes straight into the focused field of whatever app you were in
+- Local transcript history with search, copy, and delete
+- Live waveform and partial transcript while you speak
+- Press escape twice to discard a dictation in progress
+- Follows your system default microphone, including when it changes mid-session
+- Optional launch at login, off by default
+- No account, no network calls, no telemetry
 
 ## Requirements
 
-- macOS 26 (Tahoe) or later
-- Xcode 26+ (to build from source)
+macOS 26 (Tahoe) or later, and Xcode 26 to build from source. Yap depends on the speech
+models Apple ships with macOS 26, so earlier versions will not work.
 
-## Build & run
+## Building
 
 ```bash
-brew install xcodegen        # one-time
-xcodegen generate            # generates Yap.xcodeproj from project.yml
-open Yap.xcodeproj           # then Run (⌘R) — or build from the CLI:
-
-xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' build
+brew install xcodegen          # one-time
+git clone https://github.com/FrigadeHQ/yap.git
+cd yap
+xcodegen generate              # writes Yap.xcodeproj from project.yml
+open Yap.xcodeproj             # then run with ⌘R
 ```
 
-On first launch Yap asks for three permissions:
+Or straight from the command line:
 
-1. **Microphone** — to hear you
-2. **Speech Recognition** — to transcribe on-device
-3. **Accessibility** — to paste into other apps
+```bash
+xcodebuild -project Yap.xcodeproj -scheme Yap -configuration Release build
+```
 
-## Why not sandboxed?
+The Xcode project is generated rather than committed. `project.yml` is the source of truth,
+which keeps configuration changes readable in a diff.
 
-Pasting into other apps requires posting synthetic keystrokes and reading the focused
-UI element, which the macOS App Sandbox blocks. Yap therefore ships **non-sandboxed**
-and is distributed as a Developer ID–signed, notarized build (not via the Mac App
-Store). For local development it builds with ad-hoc signing.
+Run the tests with:
+
+```bash
+xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' test
+```
+
+## Permissions
+
+On first launch Yap asks for four things, and explains each one:
+
+| Permission | Why |
+| --- | --- |
+| Microphone | To hear you |
+| Speech Recognition | To transcribe on device |
+| Accessibility | To see which app you are typing into |
+| Automation | To paste the result into it |
+
+All four are granted through the normal macOS prompts. Accessibility has to be switched on
+manually in System Settings, which macOS requires for any app that types on your behalf.
+
+If you build Yap yourself with ad-hoc signing, macOS treats every rebuild as a new app and
+forgets the Accessibility grant. There is a "Reset and re-grant" button in Settings for
+exactly that situation.
+
+## How it works
+
+Audio comes off the default input through `AVAudioEngine` and gets converted to whatever
+format the analyzer asks for. Capture starts before the speech stack finishes initializing,
+and buffers recorded in that window are held and flushed once the transcriber attaches, so
+the first word of a sentence is never clipped.
+
+Transcription runs through `SpeechAnalyzer` with volatile results turned on, which is what
+gives you the live preview. `SFSpeechRecognizer` is wired up as a fallback for locales the
+newer API does not cover.
+
+Insertion is the awkward part. Yap writes the text to the clipboard, drives `⌘V` through
+System Events, then restores your previous clipboard contents. It waits before restoring,
+because Chromium-based apps read the pasteboard asynchronously and more than once, and
+restoring too early hands the renderer stale data. That single detail is the difference
+between working everywhere and working only in native apps.
+
+State lives in one place. `RecordingCoordinator` is a small state machine whose dependencies
+are all protocols, so the logic is covered by unit tests without needing a microphone.
+
+## Why it is not sandboxed
+
+Typing into another application requires driving System Events and reading the focused UI
+element, both of which the macOS App Sandbox forbids. Yap therefore ships unsandboxed and is
+distributed outside the Mac App Store. Every text expander, clipboard manager, and dictation
+tool on macOS lands in the same place for the same reason.
 
 ## Roadmap
 
-- Windows support (a separate native effort — the core value is each OS's built-in
-  speech engine, which is inherently per-platform)
-- Optional language picker (v1 follows the system locale automatically)
+- Windows support. The interesting part is that this cannot be a shared codebase in any
+  meaningful sense, because the value comes from each OS's built-in speech engine. Windows
+  would need its own native implementation.
+- A language picker. Yap currently follows your system locale.
+
+## Contributing
+
+Issues and pull requests are welcome. If you are fixing a paste failure in a specific app,
+please say which app and which macOS version, since that class of bug is almost always
+app-specific.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+Built by [Frigade](https://frigade.com), an AI assistant that lives inside your product,
+learns it end to end, and takes actions on behalf of your users.
+
+</div>
