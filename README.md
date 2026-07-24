@@ -58,24 +58,29 @@ Released builds are signed and notarized, so macOS opens them without complaint.
 ## Why we built this
 
 There's no shortage of voice to text tools for the Mac, and some of the open source ones are
-genuinely good. They tend to have one of two problems. Either you pay for them, or they make
-you download a Whisper model that runs to hundreds of megabytes, sits in your RAM, and only
-feels fast on a recent, high end Mac. On anything older it drags. Intel Macs get it worst,
-because Whisper and NVIDIA's Parakeet both lean on hardware those machines never had.
+genuinely good. Most of them still run into some mix of the same problems:
+
+- Some cost money, which is a lot to ask for something you reach for dozens of times a day.
+- Most make you download a heavy model. Whisper weights run to hundreds of megabytes, sit in
+  your RAM, and only feel fast on a recent, high end Mac. Intel Macs crawl, since models like
+  Whisper and NVIDIA's Parakeet want hardware those machines never had.
+- Plenty are bloated with settings and modes you will never open.
+- Some are closed source, so you are trusting that your audio and transcripts stay on your
+  machine, with no way to check.
 
 macOS 26 changed the math. It ships two new APIs, `SpeechAnalyzer` and `SpeechTranscriber`,
 that do streaming speech to text on device, on the chips Apple built for it. There's no model
 to download, it holds nothing in memory before you start, and it runs without an API key or a
 per minute bill. The words show up while you are still talking.
 
-Is Apple's model actually any good? Better than the thing it replaces, as it turns out.
-Inscribe [ran it against WhisperKit](https://get-inscribe.com/blog/apple-speech-api-benchmark.html)
-on 5,559 LibriSpeech clips: 2.12% word error rate on clean audio and 4.56% on noisy, next to
-3.74% and 7.95% for Whisper Small, and about three times the speed.
+Is Apple's model actually any good? Better than the thing it replaces, as it turns out. A
+[recent benchmark](https://get-inscribe.com/blog/apple-speech-api-benchmark.html) put it at
+2.12% word error rate on clean audio and 4.56% on noisy, against 3.74% and 7.95% for Whisper
+Small, and it ran about three times faster, across 5,559 LibriSpeech clips.
 
-So Yap ships no model at all. It's roughly three thousand lines of Swift in a 4 MB app, and
-it never touches the network. We use it every day at [Frigade](https://frigade.com), mostly
-for the long messages nobody wants to type twice.
+So Yap ships no model at all. It's roughly three thousand lines of Swift in a 4 MB app, all
+of it open, and it never touches the network. We use it every day at
+[Frigade](https://frigade.com), mostly for the long messages nobody wants to type twice.
 
 ## Features
 
