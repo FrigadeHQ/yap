@@ -28,6 +28,66 @@ something again later.
 The default shortcut is `⌘⇧D`. You can rebind it, or set a single modifier key instead.
 Tapping right shift on its own works nicely if you have a spare thumb.
 
+## Install
+
+### Homebrew
+
+```bash
+brew install --cask frigadehq/tap/yap
+```
+
+To update later:
+
+```bash
+brew upgrade --cask yap
+```
+
+### Direct download
+
+Grab the latest `.dmg` from [Releases](https://github.com/FrigadeHQ/yap/releases) and drag
+Yap into your Applications folder.
+
+Released builds are signed and notarized, so macOS opens them without complaint.
+
+### Build locally
+
+You only need this if you want to hack on Yap. The build is generated from `project.yml`
+rather than a committed Xcode project, so configuration changes stay readable in a diff.
+
+```bash
+brew install xcodegen                # one-time
+git clone https://github.com/FrigadeHQ/yap.git
+cd yap
+xcodegen generate                    # writes Yap.xcodeproj
+open Yap.xcodeproj                   # then run with ⌘R
+```
+
+Prefer the command line:
+
+```bash
+xcodebuild -project Yap.xcodeproj -scheme Yap -configuration Release build
+```
+
+Run the tests with:
+
+```bash
+xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' test
+```
+
+One thing to know about local builds. They are signed ad-hoc, which gives them no stable
+identity, so macOS treats every rebuild as a brand new application and forgets the
+Accessibility and Automation grants you gave the previous one. The symptom is confusing:
+the checkbox still looks switched on in System Settings, but pasting quietly stops working.
+There is a "Reset and re-grant" button in Settings for exactly this. Released builds are
+properly signed and do not have the problem.
+
+The app icon is generated too, if you want to change it:
+
+```bash
+swift Tools/GenerateIcon.swift /tmp/Yap.iconset
+iconutil -c icns /tmp/Yap.iconset -o Sources/Yap.icns
+```
+
 ## Why we built this
 
 Apple made this problem a lot easier in macOS 26, and we think most people have not noticed
@@ -48,8 +108,8 @@ That changes what a dictation app has to be. It can be small, and it can be priv
 asking you to trust anyone. Yap is roughly two thousand lines of Swift and calls no network
 APIs at all.
 
-We use it internally at Frigade. Most of the team writes faster by talking, particularly for
-the longer messages nobody wants to type twice.
+We use it internally at [Frigade](https://frigade.com). Most of the team writes faster by
+talking, particularly for the longer messages nobody wants to type twice.
 
 ## Features
 
@@ -65,33 +125,8 @@ the longer messages nobody wants to type twice.
 
 ## Requirements
 
-macOS 26 (Tahoe) or later, and Xcode 26 to build from source. Yap depends on the speech
-models Apple ships with macOS 26, so earlier versions will not work.
-
-## Building
-
-```bash
-brew install xcodegen          # one-time
-git clone https://github.com/FrigadeHQ/yap.git
-cd yap
-xcodegen generate              # writes Yap.xcodeproj from project.yml
-open Yap.xcodeproj             # then run with ⌘R
-```
-
-Or straight from the command line:
-
-```bash
-xcodebuild -project Yap.xcodeproj -scheme Yap -configuration Release build
-```
-
-The Xcode project is generated rather than committed. `project.yml` is the source of truth,
-which keeps configuration changes readable in a diff.
-
-Run the tests with:
-
-```bash
-xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' test
-```
+macOS 26 (Tahoe) or later. Yap depends on the speech models Apple ships with macOS 26, so
+earlier versions will not work. Building from source additionally needs Xcode 26.
 
 ## Permissions
 
@@ -104,12 +139,8 @@ On first launch Yap asks for four things, and explains each one:
 | Accessibility | To see which app you are typing into |
 | Automation | To paste the result into it |
 
-All four are granted through the normal macOS prompts. Accessibility has to be switched on
-manually in System Settings, which macOS requires for any app that types on your behalf.
-
-If you build Yap yourself with ad-hoc signing, macOS treats every rebuild as a new app and
-forgets the Accessibility grant. There is a "Reset and re-grant" button in Settings for
-exactly that situation.
+Accessibility has to be switched on by hand in System Settings. macOS requires that of any
+app that types on your behalf, and there is no way to grant it programmatically.
 
 ## How it works
 
