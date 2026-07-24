@@ -70,6 +70,10 @@ rm -f "$DMG"
 hdiutil create -volname "$APP" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
 rm -rf "$STAGING"
 
+# Sign the disk image itself, not just the app inside it, or `spctl -t open`
+# rejects the download with "no usable signature".
+codesign --force --timestamp --sign "$IDENTITY" "$DMG"
+
 # --- 5. Notarize + staple -------------------------------------------------------
 info "Submitting for notarization (this waits for Apple)"
 xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
