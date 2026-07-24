@@ -64,6 +64,8 @@ genuinely good. Most of them still run into some mix of the same problems:
 - Most make you download a heavy model. Whisper weights run to hundreds of megabytes, sit in
   your RAM, and only feel fast on a recent, high end Mac. Intel Macs crawl, since models like
   Whisper and NVIDIA's Parakeet want hardware those machines never had.
+- A lot are Electron or web-stack apps, so a whole browser engine idles in your memory just
+  to run a menu bar icon and a settings window.
 - Plenty are bloated with settings and modes you will never open.
 - Some are closed source, so you are trusting that your audio and transcripts stay on your
   machine, with no way to check.
@@ -78,9 +80,10 @@ Is Apple's model actually any good? Better than the thing it replaces, as it tur
 2.12% word error rate on clean audio and 4.56% on noisy, against 3.74% and 7.95% for Whisper
 Small, and it ran about three times faster, across 5,559 LibriSpeech clips.
 
-So Yap ships no model at all. It's roughly three thousand lines of Swift in a 4 MB app, all
-of it open, and it never touches the network. We use it every day at
-[Frigade](https://frigade.com), mostly for the long messages nobody wants to type twice.
+So Yap ships no model at all. It's roughly three thousand lines of native Swift in a 4 MB
+app, all of it open, with no browser engine anywhere in sight. It idles around 60 MB of
+memory and never touches the network. We use it every day at [Frigade](https://frigade.com),
+mostly for the long messages nobody wants to type twice.
 
 ## Features
 
