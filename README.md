@@ -57,7 +57,7 @@ Released builds are signed and notarized, so macOS opens them without complaint.
 
 ## Why we built this
 
-There's no shortage of voice to text tools for the Mac, and some of the open source ones are
+There's no shortage of voice to text tools for macOS, and some of the open source ones are
 genuinely good. Most of them still run into some mix of the same problems:
 
 - Some cost money, which is a lot to ask for something you reach for dozens of times a day.
@@ -82,8 +82,9 @@ Small, and it ran about three times faster, across 5,559 LibriSpeech clips.
 
 So Yap ships no model at all. It's roughly three thousand lines of native Swift in a 4 MB
 app, all of it open, with no browser engine anywhere in sight. It idles around 60 MB of
-memory and never touches the network. We use it every day at [Frigade](https://frigade.com),
-mostly for the long messages nobody wants to type twice.
+memory and never touches the network. We use it all day at [Frigade](https://frigade.com),
+mostly for prompting coding agents, writing emails, and firing off Slack messages, basically
+anything that's quicker to say than type.
 
 ## Features
 
