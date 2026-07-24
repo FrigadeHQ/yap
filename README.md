@@ -64,9 +64,9 @@ feels fast on a recent, high end Mac. On anything older it drags. Intel Macs get
 because Whisper and NVIDIA's Parakeet both lean on hardware those machines never had.
 
 macOS 26 changed the math. It ships two new APIs, `SpeechAnalyzer` and `SpeechTranscriber`,
-that do streaming speech to text on device, on the chips Apple built for it. Nothing to
-download. Nothing sitting in memory before your first word. No API key, no per minute bill.
-The words show up while you are still talking.
+that do streaming speech to text on device, on the chips Apple built for it. There's no model
+to download, it holds nothing in memory before you start, and it runs without an API key or a
+per minute bill. The words show up while you are still talking.
 
 Is Apple's model actually any good? Better than the thing it replaces, as it turns out.
 Inscribe [ran it against WhisperKit](https://get-inscribe.com/blog/apple-speech-api-benchmark.html)
