@@ -107,8 +107,8 @@ the models for you. There is nothing to download, nothing to load into memory be
 first word, no key to configure, and nothing to pay per minute. Results come back quickly
 enough to show partial text while you are still talking.
 
-That changes what a dictation app has to be. Yap is roughly two thousand lines of Swift, it
-ships no model weights, and it makes no network calls at all.
+That changes what a dictation app has to be. Yap is about three thousand lines of Swift in a
+4 MB app, it ships no model weights, and it makes no network calls at all.
 
 We use it internally at [Frigade](https://frigade.com). Most of the team writes faster by
 talking, particularly for the longer messages nobody wants to type twice.
