@@ -71,10 +71,10 @@ genuinely good. Most of them still run into some mix of the same problems:
 - Some are closed source, so you are trusting that your audio and transcripts stay on your
   machine, with no way to check.
 
-macOS 26 changed the math. It ships two new APIs, `SpeechAnalyzer` and `SpeechTranscriber`,
-that do streaming speech to text on device, on the chips Apple built for it. There's no model
-to download, it holds nothing in memory before you start, and it runs without an API key or a
-per minute bill. The words show up while you are still talking.
+What changed recently is macOS 26. It added two APIs, `SpeechAnalyzer` and `SpeechTranscriber`,
+that do on-device streaming speech to text using models the OS ships and manages. The app
+carries no model of its own, loads nothing into memory before the first word, and needs no
+API key or per minute cost. Text comes back as you talk.
 
 Is Apple's model actually any good? Better than the thing it replaces, as it turns out. A
 [recent benchmark](https://get-inscribe.com/blog/apple-speech-api-benchmark.html) put it at
