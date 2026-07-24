@@ -62,8 +62,9 @@ genuinely good. Most of them still run into some mix of the same problems:
 
 - Some cost money, which is a lot to ask for something that's now built into your OS for free.
 - Most make you download a heavy model. Whisper weights run to hundreds of megabytes, sit in
-  your RAM, and only feel fast on a recent, high end Mac. Intel Macs crawl, since models like
-  Whisper and NVIDIA's Parakeet want hardware those machines never had.
+  your RAM, and only feel fast on a recent, high end Mac. It gets especially bad on Intel
+  Macs, where models like Whisper and Parakeet often crash or refuse to run outright, and when
+  they do run, a single paragraph can take thirty seconds to a minute to come back.
 - A lot are Electron or web-stack apps, so a whole browser engine idles in your memory just
   to run a menu bar icon and a settings window.
 - Plenty are bloated with settings and modes you will never open.
