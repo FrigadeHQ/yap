@@ -107,6 +107,18 @@ the models for you. There is nothing to download, nothing to load into memory be
 first word, no key to configure, and nothing to pay per minute. Results come back quickly
 enough to show partial text while you are still talking.
 
+The fair question is whether the built-in model is actually any good, and it turns out to be
+better than the thing it replaces. Inscribe
+[benchmarked it](https://get-inscribe.com/blog/apple-speech-api-benchmark.html) against
+WhisperKit across 5,559 LibriSpeech utterances in July 2026. `SpeechAnalyzer` came in at
+2.12% word error rate on clean speech and 4.56% on noisy, against 3.74% and 7.95% for
+Whisper Small, while running roughly three times faster.
+
+The gap is widest on Intel Macs, which have no Neural Engine to fall back on. In our own
+testing, Whisper models that crawl there keep up comfortably in real time through the system
+API. If you have been avoiding local dictation because it was too slow on your machine, this
+is the part worth trying.
+
 That changes what a dictation app has to be. Yap is about three thousand lines of Swift in a
 4 MB app, it ships no model weights, and it makes no network calls at all.
 
