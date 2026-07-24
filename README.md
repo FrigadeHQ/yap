@@ -4,7 +4,7 @@
 
 # Yap
 
-**Fast voice dictation for macOS. Everything runs on your Mac.**
+**Blazing-fast voice dictation for macOS that works anywhere you can type.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
 [![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black.svg)](https://www.apple.com/macos/)
