@@ -116,10 +116,9 @@ WhisperKit across 5,559 LibriSpeech utterances in July 2026. `SpeechAnalyzer` ca
 2.12% word error rate on clean speech and 4.56% on noisy, against 3.74% and 7.95% for
 Whisper Small, while running roughly three times faster.
 
-The gap is widest on Intel Macs, which have no Neural Engine to fall back on. In our own
-testing, Whisper models that crawl there keep up comfortably in real time through the system
-API. If you have been avoiding local dictation because it was too slow on your machine, this
-is the part worth trying.
+This matters most on Intel Macs. Downloaded models like Whisper and NVIDIA's Parakeet lean on
+hardware those machines do not have, so transcription slows to a crawl. Apple's API stays
+quick on the same hardware, and in our testing dictation kept up in real time.
 
 That changes what a dictation app has to be. Yap is about three thousand lines of Swift in a
 4 MB app, it ships no model weights, and it makes no network calls at all.
