@@ -49,24 +49,26 @@ Yap into your Applications folder.
 
 Released builds are signed and notarized, so macOS opens them without complaint.
 
-### Build locally
+### Build and run locally
 
-You only need this if you want to hack on Yap. The build is generated from `project.yml`
-rather than a committed Xcode project, so configuration changes stay readable in a diff.
+One line. Clones, builds, installs into `/Applications`, and launches:
 
 ```bash
-brew install xcodegen                # one-time
-git clone https://github.com/FrigadeHQ/yap.git
-cd yap
-xcodegen generate                    # writes Yap.xcodeproj
+git clone https://github.com/FrigadeHQ/yap.git && cd yap && ./install.sh
+```
+
+The script installs XcodeGen if you do not have it, quits any running copy, and replaces it
+with the new build. Re-run `./install.sh` any time to rebuild after a change.
+
+If you would rather work in Xcode:
+
+```bash
+xcodegen generate                    # writes Yap.xcodeproj from project.yml
 open Yap.xcodeproj                   # then run with ⌘R
 ```
 
-Prefer the command line:
-
-```bash
-xcodebuild -project Yap.xcodeproj -scheme Yap -configuration Release build
-```
+The Xcode project is generated rather than committed, so configuration changes stay readable
+in a diff.
 
 Run the tests with:
 
@@ -76,10 +78,10 @@ xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' test
 
 One thing to know about local builds. They are signed ad-hoc, which gives them no stable
 identity, so macOS treats every rebuild as a brand new application and forgets the
-Accessibility and Automation grants you gave the previous one. The symptom is confusing:
-the checkbox still looks switched on in System Settings, but pasting quietly stops working.
-There is a "Reset and re-grant" button in Settings for exactly this. Released builds are
-properly signed and do not have the problem.
+permissions you granted the previous one. The symptom is confusing: the checkbox still looks
+switched on in System Settings, but pasting quietly stops working. There is a
+"Reset and re-grant" button in Settings for exactly this. Released builds are signed
+properly and do not have the problem.
 
 The app icon is generated too, if you want to change it:
 

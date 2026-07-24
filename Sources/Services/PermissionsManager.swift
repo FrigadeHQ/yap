@@ -30,13 +30,42 @@ final class PermissionsManager {
         microphone = Self.map(AVCaptureDevice.authorizationStatus(for: .audio))
         speech = Self.map(SFSpeechRecognizer.authorizationStatus())
         accessibility = AXIsProcessTrusted()
-        automation = Self.automationStatus(prompt: false)
+
+        Self.wakeSystemEvents()
+        let latestAutomation = Self.automationStatus(prompt: false)
+        // System Events quits when idle, and a check made while it's asleep
+        // reports as undetermined even though the grant is still on file. Never
+        // let that transient reading undo a grant we've already observed; only
+        // an explicit denial should.
+        if !(latestAutomation == .notDetermined && automation == .granted) {
+            automation = latestAutomation
+        }
+    }
+
+    /// System Events launches on demand. Nudging it awake before checking keeps
+    /// the reported status honest.
+    private nonisolated static func wakeSystemEvents() {
+        let bundleID = "com.apple.systemevents"
+        guard NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        else { return }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        configuration.addsToRecentItems = false
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
     /// Triggers the "Yap wants to control System Events" prompt. Runs off the
     /// main actor because the call blocks until the user answers.
     func requestAutomation() async {
-        let result = await Task.detached { Self.automationStatus(prompt: true) }.value
+        let result = await Task.detached { () -> Status in
+            // Without System Events running there is nothing to ask about, and
+            // the call returns "not found" instead of showing the prompt.
+            Self.wakeSystemEvents()
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            return Self.automationStatus(prompt: true)
+        }.value
         automation = result
     }
 

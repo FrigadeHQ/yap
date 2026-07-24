@@ -18,15 +18,22 @@ enum AudioDevices {
     }
 
     static func name(for deviceID: AudioDeviceID) -> String? {
-        var name: CFString = "" as CFString
-        var size = UInt32(MemoryLayout<CFString>.size)
+        // Core Audio hands back a +1 retained CFString, so it's received as an
+        // Unmanaged reference and released here. Passing a plain CFString var
+        // would leak it and is not a valid destination for the raw write.
+        var name: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioObjectPropertyName,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &name)
-        return status == noErr ? (name as String) : nil
+
+        let status = withUnsafeMutablePointer(to: &name) { pointer in
+            AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, pointer)
+        }
+        guard status == noErr, let name else { return nil }
+        return name.takeRetainedValue() as String
     }
 
     static func defaultInputName() -> String? {

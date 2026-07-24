@@ -141,13 +141,20 @@ final class AppState {
     func openMain(page: MainPage = .settings) {
         mainPage = page
         WindowManager.shared.show(
-            id: "main", title: "Yap",
+            id: "main", title: "Yap · On-device dictation",
             size: NSSize(width: 460, height: 740)
         ) {
             MainWindowView()
                 .environment(self)
                 .modelContainer(self.modelContainer)
         }
+    }
+
+    func openAbout() {
+        WindowManager.shared.show(
+            id: "about", title: "About Yap",
+            size: NSSize(width: 360, height: 440), resizable: false
+        ) { AboutView() }
     }
 
     func openOnboarding() {
