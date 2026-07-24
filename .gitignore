@@ -19,3 +19,6 @@ Yap.xcodeproj/
 # Secrets / signing
 *.p12
 *.mobileprovision
+
+# Release artifacts
+dist/
