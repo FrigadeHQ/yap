@@ -57,13 +57,14 @@ struct RecordingHUDView: View {
                 .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.22), radius: 22, y: 8)
-        // Transparent margin so the shadow has room to fall off; otherwise the window is sized to the card exactly and the shadow is clipped into a hard square.
-        .padding(Self.shadowMargin)
+        // Transparent margin so the shadow can fall off inside the window instead
+        // of being clipped square. The bottom needs more room than the top because
+        // the shadow is offset downward and the blur tails past its nominal radius.
+        .padding(Self.shadowInsets)
         .animation(.easeInOut(duration: 0.18), value: model.phase)
     }
 
-    // Must comfortably exceed the shadow's radius + y offset.
-    static let shadowMargin: CGFloat = 34
+    static let shadowInsets = EdgeInsets(top: 28, leading: 34, bottom: 54, trailing: 34)
 
     private var isRecordingPhase: Bool {
         model.phase == .listening || model.phase == .confirmCancel
