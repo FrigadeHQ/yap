@@ -15,6 +15,10 @@ using. No account, no API key, no audio leaving your machine.
 
 Built by [Frigade](https://frigade.com).
 
+<video src="https://github.com/FrigadeHQ/yap/raw/main/assets/yap-demo.mp4" controls width="720"></video>
+
+[Watch the demo](https://github.com/FrigadeHQ/yap/raw/main/assets/yap-demo.mp4)
+
 </div>
 
 ---
