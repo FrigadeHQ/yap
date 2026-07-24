@@ -93,20 +93,20 @@ iconutil -c icns /tmp/Yap.iconset -o Sources/Yap.icns
 Apple made this problem a lot easier in macOS 26, and we think most people have not noticed
 yet.
 
-Until recently, building decent dictation meant one of two things. You could ship Whisper
-weights inside your app, which means hundreds of megabytes, a slow cold start, and a fan
-that spins up every time someone talks. Or you could call a hosted transcription API, which
-means the audio leaves the machine, somebody needs to manage an API key, and there is a bill
-attached to every minute of speech.
+The existing options all ask you for something up front. Most of the open source dictation
+tools ship a Whisper model, so installing one means a download measured in hundreds of
+megabytes, a cold start while the weights load into memory, and fans that spin up while it
+runs. The rest call a hosted transcription API, which means an API key to manage, your audio
+leaving the machine, and a bill attached to every minute of speech.
 
-macOS 26 ships `SpeechAnalyzer` and `SpeechTranscriber`. They do streaming speech to text
-on device, the OS manages the models, and the results come back fast enough to show partial
-text while you are still talking. Nothing is uploaded. There is no key to configure and
-nothing to pay per minute.
+macOS 26 ships `SpeechAnalyzer` and `SpeechTranscriber`. They do streaming speech to text on
+device, running on silicon Apple designed for exactly this kind of work, and the OS manages
+the models for you. There is nothing to download, nothing to load into memory before your
+first word, no key to configure, and nothing to pay per minute. Results come back quickly
+enough to show partial text while you are still talking.
 
-That changes what a dictation app has to be. It can be small, and it can be private without
-asking you to trust anyone. Yap is roughly two thousand lines of Swift and calls no network
-APIs at all.
+That changes what a dictation app has to be. Yap is roughly two thousand lines of Swift, it
+ships no model weights, and it makes no network calls at all.
 
 We use it internally at [Frigade](https://frigade.com). Most of the team writes faster by
 talking, particularly for the longer messages nobody wants to type twice.
@@ -171,10 +171,13 @@ tool on macOS lands in the same place for the same reason.
 
 ## Roadmap
 
-- Windows support. The interesting part is that this cannot be a shared codebase in any
-  meaningful sense, because the value comes from each OS's built-in speech engine. Windows
-  would need its own native implementation.
-- A language picker. Yap currently follows your system locale.
+There is not much of one, and that is on purpose. Yap does a single thing, and keeping it
+small enough that you never have to think about it is the main design principle. Most
+feature ideas make an app like this worse.
+
+We are not precious about it though. If something is missing that you would use every day,
+open an issue or send a pull request and we will give it a fair hearing. A language picker
+is the most likely next addition, since Yap follows your system locale today.
 
 ## Contributing
 
