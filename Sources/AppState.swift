@@ -3,8 +3,6 @@ import Foundation
 import Observation
 import SwiftData
 
-/// The app's root object. Owns the model store and every service, wires the
-/// coordinator together, and registers the global hotkey and device observer.
 @MainActor
 @Observable
 final class AppState {
@@ -19,12 +17,8 @@ final class AppState {
         didSet { UserDefaults.standard.set(soundsEnabled, forKey: "soundsEnabled") }
     }
 
-    /// Which page the main window is showing.
     var mainPage: MainPage = .settings
 
-
-    /// Optional single-modifier trigger (e.g. tap Right Shift), alongside the
-    /// regular key combination.
     var modifierTrigger: ModifierTrigger {
         didSet {
             UserDefaults.standard.set(modifierTrigger.rawValue, forKey: "modifierTrigger")
@@ -71,7 +65,6 @@ final class AppState {
         )
     }
 
-    /// Called once after launch to start observers and register the hotkey.
     func bootstrap() {
         permissions.refresh()
         launchAtLogin.refresh()
@@ -109,7 +102,6 @@ final class AppState {
         }
     }
 
-    /// Toggles recording (used by the menu Start/Stop button).
     func toggleRecording() {
         Task { await coordinator.toggle() }
     }
@@ -136,8 +128,8 @@ final class AppState {
         }
     }
 
-    /// The one Yap window. Settings and History are pages within it rather than
-    /// separate windows, so transcripts are always a click away.
+    /// Settings and History are pages within one window, not separate windows,
+    /// so transcripts are always a click away.
     func openMain(page: MainPage = .settings) {
         mainPage = page
         WindowManager.shared.show(

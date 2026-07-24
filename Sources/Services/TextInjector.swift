@@ -4,9 +4,7 @@ import CoreGraphics
 import ApplicationServices
 
 enum InjectionOutcome: Equatable {
-    /// Text was pasted into the focused field.
     case pasted
-    /// Couldn't paste; text was left on the clipboard to paste manually.
     case leftOnClipboard
     /// Another app holds Secure Event Input, which blocks synthetic keystrokes.
     case blockedBySecureInput(String?)
@@ -20,21 +18,15 @@ protocol TextInjecting {
     func deliver(_ text: String) async -> InjectionOutcome
 }
 
-/// Delivers text by placing it on the clipboard and synthesizing ⌘V into the
-/// app that was frontmost when recording began, then restoring the clipboard.
 @MainActor
 final class TextInjector: TextInjecting {
-    /// How long to wait after ⌘V before restoring the user's clipboard.
-    ///
-    /// This must be generous. Chromium-based apps (Slack, VS Code, Discord) read
-    /// the pasteboard asynchronously and more than once — browser process, then
-    /// renderer — so restoring quickly hands the renderer stale or empty data and
-    /// the paste silently produces nothing. Native apps read synchronously on ⌘V
-    /// and are unaffected, which is why terminals worked while Slack didn't.
+    /// Must be generous: Chromium apps (Slack, VS Code, Discord) read the
+    /// pasteboard asynchronously, so restoring quickly hands the renderer stale
+    /// data and the paste silently produces nothing. Native apps read
+    /// synchronously on ⌘V and are unaffected.
     private static let restoreDelay: TimeInterval = 1.5
 
-    /// Delay between writing the clipboard and posting ⌘V, for the pasteboard
-    /// server round-trip.
+    /// Lets the pasteboard server round-trip complete before ⌘V.
     private static let prePasteDelay: TimeInterval = 0.03
 
     /// `NX_DEVICELCMDKEYMASK` — "left command physically down". Carbon-era, Qt
@@ -75,7 +67,6 @@ final class TextInjector: TextInjecting {
             return .blockedBySecureInput(SecureInput.holderName())
         }
 
-        // Make sure the app the user was in is frontmost again before we type.
         if let target = targetApp, !target.isActive {
             target.activate()
             try? await Task.sleep(nanoseconds: 120_000_000)
@@ -98,25 +89,19 @@ final class TextInjector: TextInjecting {
         return .pasted
     }
 
-    // MARK: - Private
-
-    /// AppleScript first: driving System Events goes through Apple Events rather
-    /// than the synthetic event stream, and is the only route that proved
-    /// reliable across native, Electron and web-based apps alike. Synthetic key
-    /// events remain as an automatic fallback for when automation is unavailable.
+    /// System Events (via Apple Events) is the only route that proved reliable
+    /// across native, Electron and web apps alike; synthetic key events remain a
+    /// fallback for when automation is unavailable.
     private func postPaste() async {
         if pasteViaAppleScript() { return }
         NSLog("Yap: AppleScript paste unavailable, falling back to synthetic key events")
         await postSyntheticPaste()
     }
 
-    /// Posts a full ⌘V as four events: Command down, V down, V up, Command up.
-    ///
-    /// Posting only a V event with `.maskCommand` set is enough for native apps,
-    /// which read `event.flags` directly — but NOT for Chromium/Electron (Slack,
-    /// Cursor, VS Code, Discord), which rebuilds modifier state from the raw
-    /// event stream. Without a genuine Command *keyDown* it never sees a ⌘V, and
-    /// the paste silently does nothing. Hence the real modifier key events.
+    /// Posts a full ⌘V as four events (Command down, V down, V up, Command up).
+    /// A lone V with `.maskCommand` works for native apps, but Chromium/Electron
+    /// rebuilds modifier state from the raw event stream and needs a genuine
+    /// Command keyDown or the paste silently does nothing.
     private func postSyntheticPaste() async {
         // A private source has its own modifier state, so nothing ambient can
         // bleed into the events we create.
@@ -141,7 +126,7 @@ final class TextInjector: TextInjecting {
             event.post(tap: .cghidEventTap)
         }
 
-        let step: UInt64 = 10_000_000 // 10ms
+        let step: UInt64 = 10_000_000
 
         post(commandKey, down: true, flags: commandFlags)
         try? await Task.sleep(nanoseconds: step)
@@ -152,8 +137,6 @@ final class TextInjector: TextInjecting {
         post(commandKey, down: false, flags: [])
     }
 
-    /// Pastes via System Events. Returns false if it didn't run — typically
-    /// because automation access hasn't been granted.
     private func pasteViaAppleScript() -> Bool {
         let source = "tell application \"System Events\" to keystroke \"v\" using command down"
         guard let script = NSAppleScript(source: source) else { return false }
@@ -182,7 +165,6 @@ final class TextInjector: TextInjecting {
         }
     }
 
-    /// Polls until no modifier keys are physically held, or the timeout expires.
     private func waitForModifiersToClear(timeout: TimeInterval = 0.6) async {
         let deadline = Date().addingTimeInterval(timeout)
         let watched: NSEvent.ModifierFlags = [.command, .shift, .option, .control, .function]
@@ -194,7 +176,6 @@ final class TextInjector: TextInjecting {
     }
 }
 
-/// Snapshots and restores the general pasteboard across all items and types.
 enum PasteboardSnapshot {
     static func capture(_ pasteboard: NSPasteboard = .general) -> [[NSPasteboard.PasteboardType: Data]] {
         (pasteboard.pasteboardItems ?? []).map { item in

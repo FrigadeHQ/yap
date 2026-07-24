@@ -1,7 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Watches for the Escape key so a dictation can be cancelled from anywhere.
 /// Observes only — Escape still reaches whatever app the user is in.
 @MainActor
 final class EscapeMonitor {

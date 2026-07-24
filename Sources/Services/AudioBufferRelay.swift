@@ -1,12 +1,9 @@
 import AVFoundation
 import Foundation
 
-/// Bridges the gap between the microphone opening and the transcriber being ready.
-///
-/// Capture starts instantly, but preparing the speech analyzer takes a moment
-/// (locale lookup, model availability, format negotiation). Buffers captured in
-/// that window are held here and flushed the moment a sink attaches, so the
-/// first words of a sentence are never lost.
+/// Capture starts instantly, but preparing the speech analyzer takes a moment,
+/// so buffers captured before a sink attaches are held here and flushed on
+/// attach — otherwise the first words of a sentence are lost.
 ///
 /// Receives on the audio thread, so all access is lock-protected.
 final class AudioBufferRelay {
@@ -31,7 +28,6 @@ final class AudioBufferRelay {
         lock.unlock()
     }
 
-    /// Attaches the transcriber and immediately replays everything buffered.
     func attach(_ sink: @escaping (AVAudioPCMBuffer) -> Void) {
         lock.lock()
         let buffered = pending

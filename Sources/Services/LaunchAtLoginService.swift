@@ -2,7 +2,6 @@ import ServiceManagement
 import Observation
 import Foundation
 
-/// Wraps `SMAppService` to toggle launch-at-login.
 @MainActor
 @Observable
 final class LaunchAtLoginService {

@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// The floating recording HUD: a quiet card showing that Yap is listening, a
-/// live level meter, a preview of the running transcript, and controls to
-/// finish or discard.
 struct RecordingHUDView: View {
     @Bindable var model: HUDModel
 
@@ -36,8 +33,7 @@ struct RecordingHUDView: View {
             if !model.partial.isEmpty, model.phase != .restarting {
                 Text(model.partial)
                     .font(.system(size: 12.5))
-                    // Full-strength primary: on a translucent panel, .secondary
-                    // over a light backdrop is effectively invisible.
+                    // Full-strength primary: .secondary is invisible over a light backdrop on translucent material.
                     .foregroundStyle(.primary.opacity(0.85))
                     .lineLimit(2)
                     .truncationMode(.head)
@@ -46,12 +42,9 @@ struct RecordingHUDView: View {
         }
         .padding(.horizontal, Theme.s4)
         .padding(.vertical, Theme.s3)
-        // Sized to the content: wide enough for the waveform and controls with a
-        // modest gap, rather than a broad empty band in the middle.
         .frame(width: 348, alignment: .leading)
         .background {
-            // Regular (not ultraThin) material plus a tint, so text stays legible
-            // over both light and dark backdrops.
+            // Regular (not ultraThin) material plus a tint, so text stays legible over light and dark backdrops.
             ZStack {
                 RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
                     .fill(.regularMaterial)
@@ -64,14 +57,12 @@ struct RecordingHUDView: View {
                 .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.22), radius: 22, y: 8)
-        // Transparent margin so the shadow has room to fall off inside the
-        // window. Without it the window is sized to the card exactly and the
-        // shadow is clipped at the edges, drawing a hard square around the HUD.
+        // Transparent margin so the shadow has room to fall off; otherwise the window is sized to the card exactly and the shadow is clipped into a hard square.
         .padding(Self.shadowMargin)
         .animation(.easeInOut(duration: 0.18), value: model.phase)
     }
 
-    /// Must comfortably exceed the shadow's radius + y offset.
+    // Must comfortably exceed the shadow's radius + y offset.
     static let shadowMargin: CGFloat = 34
 
     private var isRecordingPhase: Bool {
@@ -88,7 +79,6 @@ struct RecordingHUDView: View {
     }
 }
 
-/// A small circular control sized for the HUD.
 private struct HUDButton: View {
     let systemName: String
     var tint: Color = .secondary

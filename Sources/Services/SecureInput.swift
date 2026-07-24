@@ -2,17 +2,13 @@ import AppKit
 import Carbon
 import IOKit
 
-/// Detects Secure Event Input, which blocks synthetic keystrokes system-wide.
-///
-/// While any process holds it (a password field, a stuck login window), an
-/// injected ⌘V silently vanishes. Worth naming the culprit rather than letting
-/// the user think Yap is broken.
+/// Detects Secure Event Input, which blocks synthetic keystrokes system-wide —
+/// while held, an injected ⌘V silently vanishes.
 enum SecureInput {
     static var isEnabled: Bool {
         IsSecureEventInputEnabled()
     }
 
-    /// The process currently holding secure input, if it can be determined.
     static func holderPID() -> pid_t? {
         guard isEnabled else { return nil }
 
@@ -36,8 +32,8 @@ enum SecureInput {
         return nil
     }
 
-    /// Best-effort name of the blocking app. The reported pid can be wrong when
-    /// secure input was enabled by a background process, so treat it as a hint.
+    /// The reported pid can be wrong when secure input was enabled by a
+    /// background process, so treat the name as a hint.
     static func holderName() -> String? {
         guard let pid = holderPID() else { return nil }
         return NSRunningApplication(processIdentifier: pid)?.localizedName ?? "pid \(pid)"

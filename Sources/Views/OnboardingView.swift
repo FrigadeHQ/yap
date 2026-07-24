@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// First-run welcome that requests the three required permissions.
 struct OnboardingView: View {
     @Environment(AppState.self) private var app
 
@@ -70,8 +69,6 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            // Hands off to Settings so the user lands somewhere they can set
-            // their shortcut, rather than on an empty desktop.
             Button(app.permissions.allGranted ? "Continue to Settings" : "Continue") {
                 NSApp.keyWindow?.close()
                 app.openMain(page: .settings)

@@ -1,12 +1,8 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// A single modifier key used on its own as the dictation trigger.
-///
-/// Carbon hotkeys (what the KeyboardShortcuts package registers) always require
-/// a real key alongside the modifiers, so a bare "Right Shift" can't be
-/// expressed that way. Instead we watch `flagsChanged` events and treat a clean
-/// tap of the chosen modifier as the trigger.
+/// Carbon hotkeys always require a real key alongside modifiers, so a bare
+/// modifier can't be one — we watch `flagsChanged` for a clean tap instead.
 enum ModifierTrigger: String, CaseIterable, Identifiable {
     case none
     case rightShift, leftShift
@@ -32,8 +28,7 @@ enum ModifierTrigger: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The physical key's virtual keycode. `flagsChanged` reports which key
-    /// changed, which is the only way to tell left from right reliably.
+    /// `flagsChanged` reports which key changed — the only way to tell left from right.
     var keyCode: UInt16? {
         switch self {
         case .none: return nil
@@ -61,11 +56,8 @@ enum ModifierTrigger: String, CaseIterable, Identifiable {
     }
 }
 
-/// Watches for a clean tap of a single modifier key and reports it.
-///
-/// "Clean" means: pressed and released on its own, quickly, with no other key or
-/// modifier involved — so holding Right Shift to type a capital letter never
-/// fires the trigger.
+/// "Clean tap" means pressed and released quickly on its own — so holding
+/// Right Shift to type a capital letter never fires the trigger.
 @MainActor
 final class ModifierHotkeyMonitor {
     var trigger: ModifierTrigger = .none {
@@ -100,8 +92,6 @@ final class ModifierHotkeyMonitor {
         monitors.removeAll()
         reset()
     }
-
-    // MARK: - Private
 
     private func addGlobal(matching mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> Void) {
         if let monitor = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { event in
@@ -148,7 +138,6 @@ final class ModifierHotkeyMonitor {
         let heldFor = pressedAt.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
         pressedAt = nil
 
-        // Nothing else pressed, released quickly, and no modifiers left down.
         let noModifiersRemain = event.modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .isEmpty

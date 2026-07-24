@@ -20,7 +20,6 @@ struct SettingsView: View {
         .onAppear { app.permissions.refresh(); app.launchAtLogin.refresh() }
     }
 
-    /// Sits above the shortcut so transcripts are the first thing you can reach.
     private var historySection: some View {
         Button {
             onOpenHistory?()

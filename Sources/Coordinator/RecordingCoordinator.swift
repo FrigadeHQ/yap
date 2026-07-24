@@ -1,9 +1,7 @@
 import Foundation
 import Observation
 
-/// The core state machine. Ties together the dictation session, text injection,
-/// history, HUD, and sounds. All system dependencies are injected as protocols
-/// so this logic can be unit-tested with fakes.
+// System dependencies are injected as protocols so this logic can be unit-tested with fakes.
 @MainActor
 @Observable
 final class RecordingCoordinator {
@@ -23,10 +21,8 @@ final class RecordingCoordinator {
 
     private var startedAt: Date?
 
-    /// Escape was pressed once and a second press will cancel.
     private var cancelArmed = false
     private var cancelArmTask: Task<Void, Never>?
-    /// How long the second Escape press remains available.
     private let cancelArmWindow: Duration = .milliseconds(2500)
 
     init(
@@ -53,7 +49,6 @@ final class RecordingCoordinator {
         )
     }
 
-    /// Discards the in-flight dictation: nothing is inserted and nothing is saved.
     func cancel() async {
         guard state == .recording else { return }
         disarmCancel()
@@ -64,9 +59,7 @@ final class RecordingCoordinator {
         state = .idle
     }
 
-    /// Escape is a two-step cancel: the first press arms it and the HUD says so,
-    /// a second press within the window discards. Prevents a stray Escape —
-    /// dismissing a menu, say — from destroying a dictation in progress.
+    // Two-step cancel: first press arms it, a second press within the window discards. Prevents a stray Escape (dismissing a menu, say) from destroying a dictation in progress.
     func handleEscape() {
         guard state == .recording else { return }
 
@@ -92,7 +85,6 @@ final class RecordingCoordinator {
         cancelArmed = false
     }
 
-    /// Called by the global hotkey (and the menu Start/Stop button).
     func toggle() async {
         switch state {
         case .idle:
@@ -100,13 +92,12 @@ final class RecordingCoordinator {
         case .recording:
             await stopRecording()
         case .transcribing, .inserting:
-            break // busy — ignore
+            break
         }
     }
 
     private func startRecording() async {
-        // Capture the target app BEFORE any Yap UI appears, so the paste goes to
-        // where the user actually was.
+        // Capture the target app BEFORE any Yap UI appears, so the paste goes to where the user actually was.
         injector.captureTarget()
 
         state = .recording

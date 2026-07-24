@@ -1,9 +1,8 @@
 import SwiftUI
 import AppKit
 
-/// Entry point. Under the test harness we run a bare, idle app so the full stack
-/// (model container, services, windows) never initializes — unit tests bring
-/// their own isolated containers.
+/// Under the test harness, run a bare idle app so the full stack never boots —
+/// unit tests bring their own isolated model containers.
 @main
 enum YapMain {
     static func main() {
@@ -24,8 +23,6 @@ struct YapApp: App {
     private var isRecording: Bool { app.coordinator.state != .idle }
 
     var body: some Scene {
-        // A plain system menu — no custom panel. Everything here opens a real
-        // window or toggles recording.
         MenuBarExtra {
             Button(isRecording ? "Stop Dictation" : "Start Dictation") {
                 app.toggleRecording()
@@ -47,13 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A relaunch briefly leaves the previous instance alive.
         AppRelauncher.terminateOtherInstances()
 
-        // Yap always appears in the Dock while it's running.
         NSApp.setActivationPolicy(.regular)
 
         let app = AppState.shared
         app.bootstrap()
 
-        // Show onboarding on first run or whenever a permission is missing.
         if !app.permissions.allGranted {
             app.openOnboarding()
         }

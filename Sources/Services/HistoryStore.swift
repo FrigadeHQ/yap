@@ -1,8 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Persists and retrieves dictation transcripts. Behind a protocol so the
-/// coordinator can be unit-tested with a fake.
+/// Behind a protocol so the coordinator can be unit-tested with a fake.
 @MainActor
 protocol HistoryStoring: AnyObject {
     func save(text: String, duration: Double?, device: String?)
@@ -22,7 +21,6 @@ final class HistoryStore: HistoryStoring {
         try? context.save()
     }
 
-    /// Transcripts, newest first.
     func recent(limit: Int? = nil) -> [Transcript] {
         var descriptor = FetchDescriptor<Transcript>(
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]

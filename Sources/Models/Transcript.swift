@@ -1,7 +1,6 @@
 import Foundation
 import SwiftData
 
-/// A single dictation result, persisted locally.
 @Model
 final class Transcript {
     var id: UUID

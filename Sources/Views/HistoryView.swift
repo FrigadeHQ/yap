@@ -1,12 +1,10 @@
 import SwiftUI
 import SwiftData
 
-/// Browse, copy, and delete past transcripts.
 struct HistoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Transcript.createdAt, order: .reverse) private var transcripts: [Transcript]
     @State private var search = ""
-    /// Set when shown inside the main window, which gives it a back button.
     var onBack: (() -> Void)?
 
     private var filtered: [Transcript] {

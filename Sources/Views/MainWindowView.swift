@@ -1,14 +1,10 @@
 import SwiftUI
 
-/// Which page the main Yap window is showing.
 enum MainPage: Equatable {
     case settings
     case history
 }
 
-/// The single Yap window. Settings is the root; History is one step away and
-/// navigates back, so transcripts are always reachable without hunting for a
-/// separate window.
 struct MainWindowView: View {
     @Environment(AppState.self) private var app
 
@@ -28,7 +24,6 @@ struct MainWindowView: View {
     }
 }
 
-/// Shared back/title bar for pages pushed inside the main window.
 struct PageHeader: View {
     let title: String
     let onBack: () -> Void

@@ -1,14 +1,6 @@
 import AppKit
 import Foundation
 
-/// Relaunches the app in place.
-///
-/// Note: Yap does **not** need to restart when Accessibility is granted —
-/// `AXIsProcessTrusted()` and `CGEvent.post` both take effect live, and Yap uses
-/// a Carbon hotkey rather than a `CGEventTap` (a tap created while untrusted is
-/// permanently inert and would need rebuilding). This exists purely as a manual
-/// escape hatch, most usefully after a rebuild invalidates the TCC grant.
-///
 /// `createsNewApplicationInstance` is mandatory: without it, opening your own
 /// bundle is a no-op because LaunchServices just reactivates the running
 /// instance. Termination happens only inside the completion handler, once the

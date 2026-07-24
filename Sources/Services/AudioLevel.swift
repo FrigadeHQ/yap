@@ -1,9 +1,6 @@
 import AVFoundation
 
-/// Pure audio-level math for the HUD meter. Kept free of state so it can be
-/// unit-tested without an audio device.
 enum AudioLevel {
-    /// Normalized 0...1 level for a buffer, from RMS mapped to dBFS with a -60 dB floor.
     static func normalized(from buffer: AVAudioPCMBuffer) -> Float {
         guard let channelData = buffer.floatChannelData else { return 0 }
         let frames = Int(buffer.frameLength)
@@ -19,8 +16,6 @@ enum AudioLevel {
         return normalized(rms: rms)
     }
 
-    /// Maps an RMS amplitude (0...1) to a 0...1 meter value.
-    ///
     /// Speech typically sits between -45 dB (room tone) and -10 dB (talking), so
     /// the window is tightened to that range rather than a full -60 dB sweep —
     /// otherwise everything bunches into the middle and the meter barely moves.

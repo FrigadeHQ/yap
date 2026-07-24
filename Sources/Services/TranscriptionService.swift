@@ -1,9 +1,6 @@
 import Speech
 import AVFoundation
 
-/// On-device transcription using the macOS 26 `SpeechAnalyzer` / `SpeechTranscriber`
-/// API. Streams live microphone buffers and reports volatile (in-progress) and
-/// final results.
 final class TranscriptionService: StreamingTranscriber {
     var onPartial: ((String) -> Void)?
 
@@ -15,7 +12,6 @@ final class TranscriptionService: StreamingTranscriber {
     private var analyzerFormat: AVAudioFormat?
     private var finalized = ""
 
-    /// Whether the modern transcriber supports the given locale on this device.
     static func isSupported(locale: Locale) async -> Bool {
         let supported = await SpeechTranscriber.supportedLocales
         return supported
@@ -62,7 +58,6 @@ final class TranscriptionService: StreamingTranscriber {
                     }
                 }
             } catch {
-                // Stream ended or was cancelled.
             }
         }
 
@@ -93,8 +88,7 @@ final class TranscriptionService: StreamingTranscriber {
         return result
     }
 
-    /// Downloads and reserves the speech model for a locale if needed. Safe to
-    /// call ahead of time at launch so the first dictation isn't held up by it.
+    /// Reserve the model ahead of time at launch so the first dictation isn't held up by it.
     static func prepareModel(for locale: Locale) async {
         let transcriber = SpeechTranscriber(
             locale: locale,

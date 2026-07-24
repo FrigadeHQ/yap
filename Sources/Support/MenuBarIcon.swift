@@ -1,10 +1,7 @@
 import AppKit
 
-/// The menu-bar mic, drawn at runtime so it stays crisp at any scale factor and
-/// matches the Dock icon's silhouette without bundling extra image assets.
-///
-/// Rendered as a template image, so macOS handles light/dark menu bars and the
-/// highlighted state automatically.
+/// Drawn at runtime (no bundled assets, crisp at any scale) as a template image
+/// so macOS handles light/dark menu bars and highlighting automatically.
 enum MenuBarIcon {
     static func image(recording: Bool) -> NSImage {
         let size = NSSize(width: 18, height: 18)
@@ -12,7 +9,6 @@ enum MenuBarIcon {
         let image = NSImage(size: size, flipped: false) { _ in
             guard let context = NSGraphicsContext.current?.cgContext else { return true }
 
-            // Geometry mirrors the app icon: rounded-rect head, stem, base.
             let head = CGRect(x: 5.5, y: 6.0, width: 7.0, height: 10.5)
             let headPath = CGPath(
                 roundedRect: head, cornerWidth: 3.5, cornerHeight: 3.5, transform: nil

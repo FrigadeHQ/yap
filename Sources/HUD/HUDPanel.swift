@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// A borderless, non-activating, floating panel that hosts the recording HUD.
-/// It appears on top without stealing focus from the app the user is typing into.
 final class HUDPanel: NSPanel {
     init(model: HUDModel) {
         super.init(
@@ -29,11 +27,7 @@ final class HUDPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    /// Positions the panel near the bottom-center of the screen with the cursor.
-    ///
-    /// Layout is forced before measuring: reading `fittingSize` while SwiftUI
-    /// still has a stale layout returns the wrong size, so the panel would appear
-    /// at one size and visibly snap to another.
+    // Layout is forced before measuring: reading `fittingSize` while SwiftUI still has a stale layout returns the wrong size, so the panel would appear at one size and visibly snap to another.
     func reposition() {
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
             ?? NSScreen.main else { return }

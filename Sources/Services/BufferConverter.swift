@@ -1,8 +1,8 @@
 @preconcurrency import AVFoundation
 import os
 
-/// Converts microphone buffers to the audio format the speech analyzer requires.
-/// The mic's native tap format generally won't match, so each buffer is converted.
+/// The mic's native tap format generally won't match the analyzer's required
+/// format, so each buffer is converted.
 final class BufferConverter {
     enum ConversionError: Error {
         case failedToCreateConverter

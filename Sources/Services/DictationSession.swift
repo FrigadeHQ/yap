@@ -1,13 +1,10 @@
 import AVFoundation
 
-/// A full dictation session: microphone capture wired to a streaming transcriber.
-/// Behind a protocol so the coordinator can be tested with a fake.
 @MainActor
 protocol DictationSessioning: AnyObject {
     var onLevel: ((Float) -> Void)? { get set }
     var onPartial: ((String) -> Void)? { get set }
     func start() async throws
-    /// Stops capture and returns the final transcript.
     func stop() async throws -> String
 }
 
@@ -29,8 +26,6 @@ final class DictationSession: DictationSessioning {
         self.locale = locale
     }
 
-    /// Resolves locale support and installs the speech model ahead of time, so
-    /// the first dictation doesn't pay for it.
     static func prewarm(locale: Locale = .current) async {
         let supported = await TranscriptionService.isSupported(locale: locale)
         cachedModernSupport = supported
@@ -51,7 +46,6 @@ final class DictationSession: DictationSessioning {
         }
         try capture.start()
 
-        // Now bring up the transcriber and flush everything captured meanwhile.
         let supportsModern: Bool
         if let cached = Self.cachedModernSupport {
             supportsModern = cached

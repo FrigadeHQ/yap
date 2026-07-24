@@ -1,12 +1,10 @@
 import AppKit
 
-/// Plays short feedback cues when recording starts and stops.
 protocol SoundPlaying {
     func playStart()
     func playStop()
 }
 
-/// Uses built-in macOS system sounds. Cheap, native, no bundled assets.
 final class SystemSoundPlayer: SoundPlaying {
     /// Evaluated at call time so the setting can be toggled live.
     var enabled: () -> Bool = { true }

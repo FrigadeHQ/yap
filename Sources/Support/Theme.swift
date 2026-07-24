@@ -1,24 +1,19 @@
 import SwiftUI
 
-/// Design tokens for a quiet, shadcn-like aesthetic: neutral surfaces, hairline
-/// borders, soft radii, generous whitespace, and a single restrained accent.
+/// A shadcn-like design token set.
 enum Theme {
-    // Corner radii
     static let radiusLarge: CGFloat = 16
     static let radius: CGFloat = 12
     static let radiusSmall: CGFloat = 8
 
-    // Neutral, layered surfaces
     static let hairline = Color.primary.opacity(0.08)
     static let hairlineStrong = Color.primary.opacity(0.14)
     static let surface = Color.primary.opacity(0.035)
     static let surfaceHover = Color.primary.opacity(0.06)
 
-    // Semantic accents (used sparingly)
     static let recording = Color(red: 0.90, green: 0.29, blue: 0.35)
     static let success = Color(red: 0.20, green: 0.68, blue: 0.45)
 
-    // Spacing scale
     static let s1: CGFloat = 4
     static let s2: CGFloat = 8
     static let s3: CGFloat = 12
@@ -27,9 +22,6 @@ enum Theme {
     static let s6: CGFloat = 28
 }
 
-// MARK: - Reusable pieces
-
-/// A quiet card container with a hairline border.
 struct Card<Content: View>: View {
     var padding: CGFloat = Theme.s4
     @ViewBuilder var content: Content
@@ -46,7 +38,6 @@ struct Card<Content: View>: View {
     }
 }
 
-/// A small uppercase section label.
 struct SectionLabel: View {
     let text: String
     init(_ text: String) { self.text = text }
@@ -58,7 +49,6 @@ struct SectionLabel: View {
     }
 }
 
-/// A restrained, shadcn-like primary button.
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -73,7 +63,6 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// A quiet secondary/ghost button with a hairline border.
 struct GhostButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

@@ -1,13 +1,10 @@
 #!/usr/bin/env swift
 
-// Generates Yap's app icon as a .iconset of PNGs.
-//
 //   swift Tools/GenerateIcon.swift <output-iconset-dir>
 //   iconutil -c icns <output-iconset-dir> -o Sources/Yap.icns
 //
 // Drawn with CoreGraphics rather than shipped as an opaque binary so the icon
-// is reviewable and reproducible. A simple studio-condenser silhouette: capsule
-// head with a grille, a slim stem, and a base — on a graphite squircle.
+// is reviewable and reproducible.
 
 import AppKit
 import CoreGraphics
@@ -23,7 +20,6 @@ func draw(size: CGFloat, into context: CGContext) {
     context.setShouldAntialias(true)
     context.interpolationQuality = .high
 
-    // MARK: Squircle background
     // Big Sur+ proportions: an 824pt shape centred in a 1024pt canvas.
     let plate = CGRect(x: x(100), y: x(100), width: x(824), height: x(824))
     let plateRadius = x(185.4)
@@ -50,7 +46,6 @@ func draw(size: CGFloat, into context: CGContext) {
     )
     context.restoreGState()
 
-    // MARK: Microphone
     let bodyFill = CGGradient(
         colorsSpace: space,
         colors: [
@@ -71,7 +66,6 @@ func draw(size: CGFloat, into context: CGContext) {
                               options: [])
     context.restoreGState()
 
-    // Stem
     let stem = CGRect(x: x(496), y: x(220), width: x(32), height: x(140))
     context.saveGState()
     context.addPath(CGPath(rect: stem, transform: nil))
@@ -94,8 +88,7 @@ func draw(size: CGFloat, into context: CGContext) {
                               end: CGPoint(x: head.maxX, y: head.minY),
                               options: [])
 
-    // Grille: horizontal slots across the upper part of the head, clipped to it.
-    // Skipped at small sizes where they'd turn to mud.
+    // Grille slots, skipped at small sizes where they'd turn to mud.
     if size >= 64 {
         context.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.16))
         context.setLineWidth(x(14))

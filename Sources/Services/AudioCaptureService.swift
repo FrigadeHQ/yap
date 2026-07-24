@@ -1,8 +1,7 @@
 import AVFoundation
 
-/// Captures microphone audio using the system default input and forwards raw
-/// buffers plus a normalized level. macOS has no AVAudioSession — routing is
-/// handled by Core Audio / system settings, so we just tap the input node.
+/// macOS has no AVAudioSession — routing is handled by Core Audio, so we just
+/// tap the input node.
 final class AudioCaptureService {
     /// Called on the audio thread for each captured buffer.
     var onBuffer: ((AVAudioPCMBuffer) -> Void)?

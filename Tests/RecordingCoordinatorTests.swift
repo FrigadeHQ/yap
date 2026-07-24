@@ -1,8 +1,6 @@
 import Testing
 @testable import Yap
 
-// MARK: - Fakes
-
 @MainActor
 final class FakeSession: DictationSessioning {
     var onLevel: ((Float) -> Void)?
@@ -75,8 +73,6 @@ private func makeCoordinator(
     )
 }
 
-// MARK: - Tests
-
 @MainActor
 struct RecordingCoordinatorTests {
     @Test func startsIdle() {
@@ -111,8 +107,8 @@ struct RecordingCoordinatorTests {
         let history = FakeHistory()
         let coordinator = makeCoordinator(session: session, injector: injector, history: history)
 
-        await coordinator.toggle() // start
-        await coordinator.toggle() // stop
+        await coordinator.toggle()
+        await coordinator.toggle()
 
         #expect(coordinator.state == .idle)
         #expect(session.stopCalled == 1)
@@ -157,7 +153,7 @@ struct RecordingCoordinatorTests {
         let history = FakeHistory()
         let coordinator = makeCoordinator(session: session, injector: injector, history: history)
 
-        await coordinator.toggle() // start
+        await coordinator.toggle()
         await coordinator.cancel()
 
         #expect(coordinator.state == .idle)
@@ -186,8 +182,8 @@ struct RecordingCoordinatorTests {
         let coordinator = makeCoordinator(session: session, injector: injector, history: history)
 
         await coordinator.toggle()
-        coordinator.handleEscape() // arm
-        coordinator.handleEscape() // confirm
+        coordinator.handleEscape()
+        coordinator.handleEscape()
 
         // handleEscape spawns the cancel, so let it settle.
         try? await Task.sleep(nanoseconds: 100_000_000)

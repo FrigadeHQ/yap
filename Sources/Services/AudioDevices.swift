@@ -1,7 +1,6 @@
 import CoreAudio
 import Foundation
 
-/// Reads the current system default input device via the Core Audio HAL.
 enum AudioDevices {
     static func defaultInputDeviceID() -> AudioDeviceID? {
         var deviceID = AudioDeviceID(0)

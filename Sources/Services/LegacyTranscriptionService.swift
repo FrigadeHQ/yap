@@ -1,9 +1,8 @@
 import Speech
 import AVFoundation
 
-/// Fallback transcription using the older `SFSpeechRecognizer`, forced on-device.
-/// Used when the modern `SpeechTranscriber` doesn't support the current locale or
-/// its model asset can't be installed.
+/// Fallback for when the modern `SpeechTranscriber` doesn't support the current
+/// locale or its model asset can't be installed. Forced on-device.
 final class LegacyTranscriptionService: StreamingTranscriber {
     var onPartial: ((String) -> Void)?
 

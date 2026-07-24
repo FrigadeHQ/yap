@@ -2,9 +2,7 @@ import Testing
 import SwiftData
 @testable import Yap
 
-/// Serialized with a single shared in-memory container: SwiftData traps when
-/// multiple `ModelContainer`s for the same model are created concurrently, which
-/// is exactly what parallel test execution would do.
+/// Serialized around one shared in-memory container: SwiftData traps when multiple `ModelContainer`s for the same model are created concurrently.
 @MainActor
 @Suite(.serialized)
 struct HistoryStoreTests {
@@ -15,7 +13,7 @@ struct HistoryStoreTests {
 
     private func makeStore() -> HistoryStore {
         let store = HistoryStore(context: Self.container.mainContext)
-        store.clearAll() // reset state between tests
+        store.clearAll()
         return store
     }
 

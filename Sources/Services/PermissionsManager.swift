@@ -5,8 +5,6 @@ import ApplicationServices
 import Carbon
 import Observation
 
-/// Tracks and requests the three permissions Yap needs: microphone, speech
-/// recognition, and accessibility (for pasting into other apps).
 @MainActor
 @Observable
 final class PermissionsManager {
@@ -17,7 +15,6 @@ final class PermissionsManager {
     var microphone: Status = .notDetermined
     var speech: Status = .notDetermined
     var accessibility: Bool = false
-    /// Permission to drive System Events, which is how text is pasted.
     var automation: Status = .notDetermined
 
     private var pollTimer: Timer?
@@ -33,10 +30,9 @@ final class PermissionsManager {
 
         Self.wakeSystemEvents()
         let latestAutomation = Self.automationStatus(prompt: false)
-        // System Events quits when idle, and a check made while it's asleep
-        // reports as undetermined even though the grant is still on file. Never
-        // let that transient reading undo a grant we've already observed; only
-        // an explicit denial should.
+        // System Events reports undetermined while asleep even though the grant
+        // is on file, so never let that transient reading undo a grant we've
+        // already observed; only an explicit denial should.
         if !(latestAutomation == .notDetermined && automation == .granted) {
             automation = latestAutomation
         }
@@ -56,12 +52,11 @@ final class PermissionsManager {
         NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
-    /// Triggers the "Yap wants to control System Events" prompt. Runs off the
-    /// main actor because the call blocks until the user answers.
+    /// Runs off the main actor because the prompt call blocks until the user answers.
     func requestAutomation() async {
         let result = await Task.detached { () -> Status in
-            // Without System Events running there is nothing to ask about, and
-            // the call returns "not found" instead of showing the prompt.
+            // Without System Events running the call returns "not found" instead
+            // of showing the prompt.
             Self.wakeSystemEvents()
             try? await Task.sleep(nanoseconds: 300_000_000)
             return Self.automationStatus(prompt: true)
@@ -75,8 +70,6 @@ final class PermissionsManager {
         }
     }
 
-    /// Asks the Apple Events subsystem whether we may drive System Events,
-    /// optionally surfacing the consent prompt.
     private nonisolated static func automationStatus(prompt: Bool) -> Status {
         let bundleID = "com.apple.systemevents"
         var target = AEAddressDesc()
@@ -102,9 +95,6 @@ final class PermissionsManager {
         }
     }
 
-    /// Watches for Accessibility being granted in System Settings while we run,
-    /// so the UI updates the moment it happens and no restart is needed.
-    ///
     /// Three signals, because none alone is dependable: the (undocumented)
     /// system accessibility-change notification for latency, app activation
     /// (Apple DTS's suggested mechanism), and a sparse poll as the backstop.
@@ -182,7 +172,6 @@ final class PermissionsManager {
         refresh()
     }
 
-    /// Prompts for Accessibility and deep-links to System Settings.
     func requestAccessibility() {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)

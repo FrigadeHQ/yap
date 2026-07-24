@@ -1,14 +1,12 @@
 import AppKit
 
-/// Owns the HUD panel and its model, implementing the coordinator's HUD contract.
 @MainActor
 final class HUDController: HUDControlling {
     private let model = HUDModel()
     private var panel: HUDPanel?
     private var hideTask: Task<Void, Never>?
 
-    /// Smoothed meter value. Fast attack so speech registers immediately, slower
-    /// release so the bars glide back instead of snapping to zero between words.
+    // Fast attack so speech registers immediately, slower release so bars glide back instead of snapping to zero between words.
     private var smoothedLevel: Float = 0
 
     func setActions(onConfirm: @escaping () -> Void, onCancel: @escaping () -> Void) {
@@ -16,9 +14,7 @@ final class HUDController: HUDControlling {
         model.onCancel = onCancel
     }
 
-    /// Builds the panel ahead of time. Creating it on first use meant the very
-    /// first dictation rendered an unlaid-out window for a frame before settling
-    /// into place — the flicker before "Listening" appeared.
+    // Built ahead of time: creating it on first use rendered an unlaid-out window for a frame — a flicker before "Listening" appeared.
     func prepare() {
         guard panel == nil else { return }
         let panel = HUDPanel(model: model)
@@ -30,8 +26,7 @@ final class HUDController: HUDControlling {
     func show(device: String?) {
         hideTask?.cancel()
 
-        // Reset all state BEFORE the panel is on screen, so no stale frame from
-        // the previous session is ever visible.
+        // Reset state BEFORE the panel is on screen, so no stale frame from the previous session is ever visible.
         model.device = device
         model.partial = ""
         model.level = 0
@@ -58,13 +53,11 @@ final class HUDController: HUDControlling {
     }
 
     func setLevel(_ level: Float) {
-        // Very fast attack keeps transients visible; gentler release lets the
-        // trace fall away instead of collapsing between syllables.
+        // Very fast attack keeps transients visible; gentler release lets the trace fall away instead of collapsing between syllables.
         let coefficient: Float = level > smoothedLevel ? 0.75 : 0.22
         smoothedLevel += (level - smoothedLevel) * coefficient
         model.level = smoothedLevel
 
-        // Scroll the waveform one sample to the left.
         var samples = model.levels
         samples.removeFirst()
         samples.append(smoothedLevel)
