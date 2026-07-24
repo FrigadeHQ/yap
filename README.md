@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/yap-icon.png" alt="Yap" width="128" height="128">
+
 # Yap
 
 **Voice dictation for macOS that runs entirely on your Mac.**
