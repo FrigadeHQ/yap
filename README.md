@@ -55,80 +55,27 @@ Yap into your Applications folder.
 
 Released builds are signed and notarized, so macOS opens them without complaint.
 
-### Build and run locally
-
-One line. Clones, builds, installs into `/Applications`, and launches:
-
-```bash
-git clone https://github.com/FrigadeHQ/yap.git && cd yap && ./install.sh
-```
-
-The script installs XcodeGen if you do not have it, quits any running copy, and replaces it
-with the new build. Re-run `./install.sh` any time to rebuild after a change.
-
-If you would rather work in Xcode:
-
-```bash
-xcodegen generate                    # writes Yap.xcodeproj from project.yml
-open Yap.xcodeproj                   # then run with ⌘R
-```
-
-The Xcode project is generated rather than committed, so configuration changes stay readable
-in a diff.
-
-Run the tests with:
-
-```bash
-xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' test
-```
-
-One thing to know about local builds. They are signed ad-hoc, which gives them no stable
-identity, so macOS treats every rebuild as a brand new application and forgets the
-permissions you granted the previous one. The symptom is confusing: the checkbox still looks
-switched on in System Settings, but pasting quietly stops working. There is a
-"Reset and re-grant" button in Settings for exactly this. Released builds are signed
-properly and do not have the problem.
-
-The app icon is generated too, if you want to change it:
-
-```bash
-swift Tools/GenerateIcon.swift /tmp/Yap.iconset
-iconutil -c icns /tmp/Yap.iconset -o Sources/Yap.icns
-```
-
 ## Why we built this
 
-Apple made this problem a lot easier in macOS 26, and we think most people have not noticed
-yet.
+There's no shortage of voice to text tools for the Mac, and some of the open source ones are
+genuinely good. They tend to have one of two problems. Either you pay for them, or they make
+you download a Whisper model that runs to hundreds of megabytes, sits in your RAM, and only
+feels fast on a recent, high end Mac. On anything older it drags. Intel Macs get it worst,
+because Whisper and NVIDIA's Parakeet both lean on hardware those machines never had.
 
-The existing options all ask you for something up front. Most of the open source dictation
-tools ship a Whisper model, so installing one means a download measured in hundreds of
-megabytes, a cold start while the weights load into memory, and fans that spin up while it
-runs. The rest call a hosted transcription API, which means an API key to manage, your audio
-leaving the machine, and a bill attached to every minute of speech.
+macOS 26 changed the math. It ships two new APIs, `SpeechAnalyzer` and `SpeechTranscriber`,
+that do streaming speech to text on device, on the chips Apple built for it. Nothing to
+download. Nothing sitting in memory before your first word. No API key, no per minute bill.
+The words show up while you are still talking.
 
-macOS 26 ships `SpeechAnalyzer` and `SpeechTranscriber`. They do streaming speech to text on
-device, running on silicon Apple designed for exactly this kind of work, and the OS manages
-the models for you. There is nothing to download, nothing to load into memory before your
-first word, no key to configure, and nothing to pay per minute. Results come back quickly
-enough to show partial text while you are still talking.
+Is Apple's model actually any good? Better than the thing it replaces, as it turns out.
+Inscribe [ran it against WhisperKit](https://get-inscribe.com/blog/apple-speech-api-benchmark.html)
+on 5,559 LibriSpeech clips: 2.12% word error rate on clean audio and 4.56% on noisy, next to
+3.74% and 7.95% for Whisper Small, and about three times the speed.
 
-The fair question is whether the built-in model is actually any good, and it turns out to be
-better than the thing it replaces. Inscribe
-[benchmarked it](https://get-inscribe.com/blog/apple-speech-api-benchmark.html) against
-WhisperKit across 5,559 LibriSpeech utterances in July 2026. `SpeechAnalyzer` came in at
-2.12% word error rate on clean speech and 4.56% on noisy, against 3.74% and 7.95% for
-Whisper Small, while running roughly three times faster.
-
-This matters most on Intel Macs. Downloaded models like Whisper and NVIDIA's Parakeet lean on
-hardware those machines do not have, so transcription slows to a crawl. Apple's API stays
-quick on the same hardware, and in our testing dictation kept up in real time.
-
-That changes what a dictation app has to be. Yap is about three thousand lines of Swift in a
-4 MB app, it ships no model weights, and it makes no network calls at all.
-
-We use it internally at [Frigade](https://frigade.com). Most of the team writes faster by
-talking, particularly for the longer messages nobody wants to type twice.
+So Yap ships no model at all. It's roughly three thousand lines of Swift in a 4 MB app, and
+it never touches the network. We use it every day at [Frigade](https://frigade.com), mostly
+for the long messages nobody wants to type twice.
 
 ## Features
 
@@ -197,6 +144,48 @@ feature ideas make an app like this worse.
 We are not precious about it though. If something is missing that you would use every day,
 open an issue or send a pull request and we will give it a fair hearing. A language picker
 is the most likely next addition, since Yap follows your system locale today.
+
+## Development
+
+Build and install from source in one line. It clones, builds, drops Yap into `/Applications`,
+and launches it:
+
+```bash
+git clone https://github.com/FrigadeHQ/yap.git && cd yap && ./install.sh
+```
+
+The script installs XcodeGen if you do not have it, quits any running copy, and replaces it
+with the new build. Re-run `./install.sh` any time to rebuild after a change.
+
+If you would rather work in Xcode:
+
+```bash
+xcodegen generate                    # writes Yap.xcodeproj from project.yml
+open Yap.xcodeproj                   # then run with ⌘R
+```
+
+The Xcode project is generated rather than committed, so configuration changes stay readable
+in a diff.
+
+Run the tests with:
+
+```bash
+xcodebuild -project Yap.xcodeproj -scheme Yap -destination 'platform=macOS' test
+```
+
+One thing to know about local builds. They are signed ad-hoc, which gives them no stable
+identity, so macOS treats every rebuild as a brand new application and forgets the
+permissions you granted the previous one. The symptom is confusing: the checkbox still looks
+switched on in System Settings, but pasting quietly stops working. There is a
+"Reset and re-grant" button in Settings for exactly this. Released builds are signed
+properly and do not have the problem.
+
+The app icon is generated too, if you want to change it:
+
+```bash
+swift Tools/GenerateIcon.swift /tmp/Yap.iconset
+iconutil -c icns /tmp/Yap.iconset -o Sources/Yap.icns
+```
 
 ## Contributing
 
