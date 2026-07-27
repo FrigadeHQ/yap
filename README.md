@@ -15,11 +15,7 @@ using. No account, no API key, no audio leaving your machine.
 
 Built by [Frigade](https://frigade.com).
 
-<a href="https://github.com/FrigadeHQ/yap/blob/main/assets/yap-demo.mp4">
-  <img src="assets/yap-demo-poster.jpg" width="720" alt="Yap demo: dictating into Claude Code">
-</a>
-
-▶ [Watch the demo](https://github.com/FrigadeHQ/yap/blob/main/assets/yap-demo.mp4)
+https://github.com/user-attachments/assets/9bd8dae6-49d6-4c06-98b9-878e24dd401f
 
 </div>
 
