@@ -34,6 +34,8 @@ Tapping right shift on its own works nicely if you have a spare thumb.
 
 ## Install
 
+The quickest way is from the website: [frigade.com/yap](https://frigade.com/yap). Or use Homebrew.
+
 ### Homebrew
 
 ```bash
@@ -48,10 +50,11 @@ brew upgrade --cask yap
 
 ### Direct download
 
-Grab the latest `.dmg` from [Releases](https://github.com/FrigadeHQ/yap/releases) and drag
-Yap into your Applications folder.
+[**Download Yap**](https://frigade.com/yap) from the website, or grab the `.dmg` straight from
+[Releases](https://github.com/FrigadeHQ/yap/releases). Drag it into your Applications folder.
 
-Released builds are signed and notarized, so macOS opens them without complaint.
+Yap runs on macOS 26 (Tahoe) on an Apple Silicon Mac. Intel Macs are not supported. Released
+builds are signed and notarized, so macOS opens them without complaint.
 
 ## Why we built this
 
