@@ -208,8 +208,18 @@ MIT. See [LICENSE](LICENSE).
 ---
 
 <div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/frigade-logo-dark.svg">
+    <img src="assets/frigade-logo.svg" alt="Frigade" width="120">
+  </picture>
+</div>
 
-Built by [Frigade](https://frigade.com), an AI assistant that lives inside your product,
-learns it end to end, and takes actions on behalf of your users.
+<div align="center">
 
+Built by Frigade. [Frigade Engage](https://frigade.com/engage) makes it easy to build in-product onboarding (checklists, product tours, and more), and [Frigade Assistant](https://frigade.com) is an in-app AI assistant that learns your product by using it, then onboards, supports, and activates your customers.
+
+</div>
+
+<div align="center">
+<a href="https://frigade.com">Website</a> · <a href="https://docs.frigade.com">Docs</a> · <a href="https://demo.frigade.com">Demo</a> · <a href="https://github.com/FrigadeHQ">GitHub</a>
 </div>
