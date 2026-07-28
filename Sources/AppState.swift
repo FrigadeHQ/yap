@@ -17,6 +17,13 @@ final class AppState {
         didSet { UserDefaults.standard.set(soundsEnabled, forKey: "soundsEnabled") }
     }
 
+    var cleanupEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(cleanupEnabled, forKey: "cleanupEnabled")
+            if cleanupEnabled { cleanup.prewarm() }
+        }
+    }
+
     var mainPage: MainPage = .settings
 
     var modifierTrigger: ModifierTrigger {
@@ -34,6 +41,7 @@ final class AppState {
     private let injector = TextInjector()
     private let hud = HUDController()
     private let sounds = SystemSoundPlayer()
+    let cleanup = TranscriptCleanupService()
     private let deviceObserver = DefaultInputObserver()
     private var history: HistoryStore!
 
@@ -45,6 +53,7 @@ final class AppState {
         }
 
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
+        cleanupEnabled = (UserDefaults.standard.object(forKey: "cleanupEnabled") as? Bool) ?? false
         modifierTrigger = ModifierTrigger(
             rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
         ) ?? .none
@@ -61,6 +70,8 @@ final class AppState {
             history: history,
             hud: hud,
             sounds: sounds,
+            cleaner: cleanup,
+            cleanupEnabled: { [weak self] in self?.cleanupEnabled ?? false },
             deviceName: { [weak self] in self?.currentInputName }
         )
     }
@@ -96,6 +107,7 @@ final class AppState {
         Task.detached(priority: .utility) {
             await DictationSession.prewarm()
         }
+        if cleanupEnabled { cleanup.prewarm() }
 
         // Delivered on the main queue by the observer, so assign directly.
         deviceObserver.start { [weak self] name in

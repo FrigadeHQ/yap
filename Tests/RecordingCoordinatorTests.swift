@@ -57,11 +57,25 @@ final class FakeSounds: SoundPlaying {
 }
 
 @MainActor
+final class FakeCleaner: TranscriptCleaning {
+    var isAvailable = true
+    var transform: (String) -> String = { $0 }
+    var cleaned: [String] = []
+
+    func cleanup(_ text: String) async -> String {
+        cleaned.append(text)
+        return transform(text)
+    }
+}
+
+@MainActor
 private func makeCoordinator(
     session: FakeSession? = nil,
     injector: FakeInjector? = nil,
     history: FakeHistory? = nil,
-    hud: FakeHUD? = nil
+    hud: FakeHUD? = nil,
+    cleaner: FakeCleaner? = nil,
+    cleanupEnabled: Bool = false
 ) -> RecordingCoordinator {
     RecordingCoordinator(
         session: session ?? FakeSession(),
@@ -69,6 +83,8 @@ private func makeCoordinator(
         history: history ?? FakeHistory(),
         hud: hud ?? FakeHUD(),
         sounds: FakeSounds(),
+        cleaner: cleaner ?? FakeCleaner(),
+        cleanupEnabled: { cleanupEnabled },
         deviceName: { "Test Mic" }
     )
 }
@@ -211,6 +227,63 @@ struct RecordingCoordinatorTests {
 
         #expect(coordinator.state == .idle)
         #expect(session.stopCalled == 0)
+    }
+
+    @Test func cleanedTextIsInsertedAndSaved() async {
+        let session = FakeSession()
+        session.textToReturn = "um so hello world"
+        let injector = FakeInjector()
+        let history = FakeHistory()
+        let hud = FakeHUD()
+        let cleaner = FakeCleaner()
+        cleaner.transform = { _ in "Hello world." }
+        let coordinator = makeCoordinator(
+            session: session, injector: injector, history: history, hud: hud,
+            cleaner: cleaner, cleanupEnabled: true
+        )
+
+        await coordinator.toggle()
+        await coordinator.toggle()
+
+        #expect(cleaner.cleaned == ["um so hello world"])
+        #expect(injector.delivered == ["Hello world."])
+        #expect(history.saved == ["Hello world."])
+        #expect(hud.phases.contains(.cleaning))
+    }
+
+    @Test func cleanupIsSkippedWhenDisabled() async {
+        let injector = FakeInjector()
+        let hud = FakeHUD()
+        let cleaner = FakeCleaner()
+        cleaner.transform = { _ in "should not appear" }
+        let coordinator = makeCoordinator(
+            injector: injector, hud: hud, cleaner: cleaner, cleanupEnabled: false
+        )
+
+        await coordinator.toggle()
+        await coordinator.toggle()
+
+        #expect(cleaner.cleaned.isEmpty)
+        #expect(injector.delivered == ["hello world"])
+        #expect(!hud.phases.contains(.cleaning))
+    }
+
+    @Test func cleanupIsSkippedWhenModelUnavailable() async {
+        let injector = FakeInjector()
+        let hud = FakeHUD()
+        let cleaner = FakeCleaner()
+        cleaner.isAvailable = false
+        cleaner.transform = { _ in "should not appear" }
+        let coordinator = makeCoordinator(
+            injector: injector, hud: hud, cleaner: cleaner, cleanupEnabled: true
+        )
+
+        await coordinator.toggle()
+        await coordinator.toggle()
+
+        #expect(cleaner.cleaned.isEmpty)
+        #expect(injector.delivered == ["hello world"])
+        #expect(!hud.phases.contains(.cleaning))
     }
 
     @Test func trimsWhitespaceBeforeInserting() async {

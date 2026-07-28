@@ -4,6 +4,8 @@ enum HUDPhase: Equatable {
     case listening
     case confirmCancel
     case transcribing
+    // Running the transcript through the on-device cleanup model.
+    case cleaning
     // Relaunching to pick up newly granted Accessibility rights.
     case restarting
 }
