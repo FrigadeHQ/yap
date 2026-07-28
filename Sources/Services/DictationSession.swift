@@ -18,41 +18,41 @@ final class DictationSession: DictationSessioning {
     private var transcriber: StreamingTranscriber?
     private var locale: Locale
 
-    /// Which engine to use and the locale to run it with. The two engines
-    /// support different locale sets and neither takes `Locale.current`
-    /// verbatim, so they are resolved together.
-    enum Engine {
-        case modern(Locale)
-        case legacy(Locale)
+    /// The locale the on-device transcriber will actually run, resolved from the
+    /// user's locale. `.unsupported` means no on-device model covers it. We stop
+    /// there rather than fall back to anything that would leave the device.
+    enum Resolution {
+        case supported(Locale)
+        case unsupported
     }
 
     /// Resolved once — querying supported locales is slow enough to be felt on
     /// the first keypress.
-    private static var cachedEngine: Engine?
+    private static var cachedResolution: Resolution?
 
     init(locale: Locale = .current) {
         self.locale = locale
     }
 
-    /// Switch dictation language while idle. Clears the resolved-engine cache so
-    /// the next recording re-resolves for the new locale.
+    /// Switch dictation language while idle. Clears the resolved cache so the
+    /// next recording re-resolves for the new locale.
     func setLocale(_ newLocale: Locale) {
         locale = newLocale
         transcriber = nil
-        Self.cachedEngine = nil
+        Self.cachedResolution = nil
     }
 
-    static func resolveEngine(for locale: Locale) async -> Engine {
-        if let modern = await TranscriptionService.resolvedLocale(for: locale) {
-            return .modern(modern)
+    static func resolve(for locale: Locale) async -> Resolution {
+        if let supported = await TranscriptionService.resolvedLocale(for: locale) {
+            return .supported(supported)
         }
-        return .legacy(LegacyTranscriptionService.resolvedLocale(for: locale) ?? locale)
+        return .unsupported
     }
 
     static func prewarm(locale: Locale = .current) async {
-        let engine = await resolveEngine(for: locale)
-        cachedEngine = engine
-        guard case .modern(let resolved) = engine else { return }
+        let resolution = await resolve(for: locale)
+        cachedResolution = resolution
+        guard case .supported(let resolved) = resolution else { return }
         await TranscriptionService.prepareModel(for: resolved)
     }
 
@@ -69,25 +69,23 @@ final class DictationSession: DictationSessioning {
         }
         try capture.start()
 
-        let resolved: Engine
-        if let cached = Self.cachedEngine {
-            resolved = cached
+        let resolution: Resolution
+        if let cached = Self.cachedResolution {
+            resolution = cached
         } else {
-            resolved = await Self.resolveEngine(for: locale)
-            Self.cachedEngine = resolved
+            resolution = await Self.resolve(for: locale)
+            Self.cachedResolution = resolution
         }
 
-        let engine: StreamingTranscriber
-        let engineLocale: Locale
-        switch resolved {
-        case .modern(let locale):
-            engine = TranscriptionService()
-            engineLocale = locale
-        case .legacy(let locale):
-            engine = LegacyTranscriptionService()
-            engineLocale = locale
+        guard case .supported(let engineLocale) = resolution else {
+            // No on-device model covers this locale. Refuse rather than hand the
+            // audio to a service that would send it off the device.
+            capture.stop()
+            relay.reset()
+            throw TranscriptionError.unsupportedLocale
         }
 
+        let engine: StreamingTranscriber = TranscriptionService()
         engine.onPartial = { [weak self] text in
             Task { @MainActor in self?.onPartial?(text) }
         }
