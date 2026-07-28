@@ -12,11 +12,15 @@ final class TranscriptionService: StreamingTranscriber {
     private var analyzerFormat: AVAudioFormat?
     private var finalized = ""
 
+    /// The supported locale to transcribe `locale` with, or nil if this engine
+    /// covers none of it. The returned locale is what must be handed to
+    /// `SpeechTranscriber` — `locale` itself may carry extensions it rejects.
+    static func resolvedLocale(for locale: Locale) async -> Locale? {
+        SpeechLocale.bestMatch(for: locale, in: await SpeechTranscriber.supportedLocales)
+    }
+
     static func isSupported(locale: Locale) async -> Bool {
-        let supported = await SpeechTranscriber.supportedLocales
-        return supported
-            .map { $0.identifier(.bcp47) }
-            .contains(locale.identifier(.bcp47))
+        await resolvedLocale(for: locale) != nil
     }
 
     func begin(locale: Locale) async throws {

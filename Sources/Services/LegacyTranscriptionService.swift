@@ -31,8 +31,19 @@ final class LegacyTranscriptionService: StreamingTranscriber {
     /// long dictation is never dropped or slid away.
     private let segmentSeconds: Double = 40
 
+    /// The locale this recognizer can actually run, or nil if none fits.
+    static func resolvedLocale(for locale: Locale) -> Locale? {
+        SpeechLocale.bestMatch(for: locale, in: SFSpeechRecognizer.supportedLocales())
+    }
+
     func begin(locale: Locale) async throws {
-        guard let recognizer = SFSpeechRecognizer(locale: locale) ?? SFSpeechRecognizer() else {
+        // `SFSpeechRecognizer(locale:)` returns a recognizer for locales it does
+        // not support and even reports `isAvailable == true`; it only fails once
+        // a task starts, and that failure looks exactly like a segment ending,
+        // so we would retry forever and return an empty transcript. Resolve to a
+        // locale it lists as supported before constructing it.
+        let resolved = Self.resolvedLocale(for: locale).flatMap(SFSpeechRecognizer.init(locale:))
+        guard let recognizer = resolved ?? SFSpeechRecognizer() else {
             throw TranscriptionError.setupFailed
         }
         queue.sync {
