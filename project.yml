@@ -13,6 +13,10 @@ settings:
     MARKETING_VERSION: "0.1.4"
     CURRENT_PROJECT_VERSION: "5"
     DEAD_CODE_STRIPPING: YES
+    # Apple Silicon only. The on-device SpeechAnalyzer needs it, and the Intel
+    # fallback sent audio to Apple, which we won't do.
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: NO
 
 packages:
   KeyboardShortcuts:

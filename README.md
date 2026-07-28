@@ -60,9 +60,8 @@ genuinely good. Most of them still run into some mix of the same problems:
 
 - Some cost money, which is a lot to ask for something that's now built into your OS for free.
 - Most make you download a heavy model. Whisper weights run to hundreds of megabytes, sit in
-  your RAM, and only feel fast on a recent, high end Mac. It gets especially bad on Intel
-  Macs, where models like Whisper and Parakeet often crash or refuse to run outright, and when
-  they do run, a single paragraph can take thirty seconds to a minute to come back.
+  your RAM, and only feel fast on a recent, high end Mac. On slower machines a single
+  paragraph can take thirty seconds to a minute to come back.
 - A lot are Electron or web-stack apps, so a whole browser engine idles in your memory just
   to run a menu bar icon and a settings window.
 - Plenty are bloated with settings and modes you will never open.
@@ -99,8 +98,10 @@ anything that's quicker to say than type.
 
 ## Requirements
 
-macOS 26 (Tahoe) or later. Yap depends on the speech models Apple ships with macOS 26, so
-earlier versions will not work. Building from source additionally needs Xcode 26.
+macOS 26 (Tahoe) or later, on an Apple Silicon Mac. Yap depends on the speech models Apple
+ships with macOS 26, and `SpeechAnalyzer` runs on device only on Apple Silicon. We dropped
+Intel support on purpose: the only way to transcribe on those machines was an API that sends
+audio to Apple, and that breaks the one promise Yap makes. Building from source needs Xcode 26.
 
 ## Permissions
 
@@ -124,8 +125,10 @@ and buffers recorded in that window are held and flushed once the transcriber at
 the first word of a sentence is never clipped.
 
 Transcription runs through `SpeechAnalyzer` with volatile results turned on, which is what
-gives you the live preview. `SFSpeechRecognizer` is wired up as a fallback for locales the
-newer API does not cover.
+gives you the live preview. There is no other path. Older APIs like `SFSpeechRecognizer` can
+fall back to Apple's servers when a locale has no on-device model, so Yap does not use them.
+If `SpeechAnalyzer` can't handle your language on device, dictation stops rather than sending
+your audio anywhere.
 
 Insertion is the awkward part. Yap writes the text to the clipboard, drives `⌘V` through
 System Events, then restores your previous clipboard contents. It waits before restoring,

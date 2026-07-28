@@ -10,4 +10,5 @@ protocol StreamingTranscriber: AnyObject {
 enum TranscriptionError: Error {
     case setupFailed
     case invalidFormat
+    case unsupportedLocale
 }
