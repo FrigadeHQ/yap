@@ -10,7 +10,7 @@
 
 Press a shortcut, talk, press it again. Your words land in whatever text field you were using. No account, no API key, no audio leaving your machine.
 
-Built by [Frigade](https://frigade.com).
+Built by [Frigade](https://frigade.com/?utm_source=yap&utm_medium=readme).
 
 https://github.com/user-attachments/assets/9bd8dae6-49d6-4c06-98b9-878e24dd401f
 
@@ -60,7 +60,7 @@ What changed recently is macOS 26. It added two APIs, `SpeechAnalyzer` and `Spee
 
 Is Apple's model actually any good? Better than the thing it replaces, as it turns out. A [recent benchmark](https://get-inscribe.com/blog/apple-speech-api-benchmark.html) put it at 2.12% word error rate on clean audio and 4.56% on noisy, against 3.74% and 7.95% for Whisper Small, and it ran about three times faster, across 5,559 LibriSpeech clips.
 
-So Yap ships no model at all. It's roughly three thousand lines of native Swift in a 4 MB app, all of it open, with no browser engine anywhere in sight. It idles around 60 MB of memory and never touches the network. We use it all day at [Frigade](https://frigade.com), mostly for prompting coding agents, writing emails, and firing off Slack messages, basically anything that's quicker to say than type.
+So Yap ships no model at all. It's roughly three thousand lines of native Swift in a 4 MB app, all of it open, with no browser engine anywhere in sight. It idles around 60 MB of memory and never touches the network. We use it all day at [Frigade](https://frigade.com/?utm_source=yap&utm_medium=readme), mostly for prompting coding agents, writing emails, and firing off Slack messages, basically anything that's quicker to say than type.
 
 ## Features
 
@@ -174,10 +174,10 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-Built by Frigade. [Frigade Engage](https://frigade.com/engage) makes it easy to build in-product onboarding (checklists, product tours, and more), and [Frigade Assistant](https://frigade.com) is an in-app AI assistant that learns your product by using it, then onboards, supports, and activates your customers.
+Built by Frigade. [Frigade Engage](https://frigade.com/engage?utm_source=yap&utm_medium=readme) makes it easy to build in-product onboarding (checklists, product tours, and more), and [Frigade Assistant](https://frigade.com/?utm_source=yap&utm_medium=readme) is an in-app AI assistant that learns your product by using it, then onboards, supports, and activates your customers.
 
 </div>
 
 <div align="center">
-<a href="https://frigade.com">Website</a> · <a href="https://docs.frigade.com">Docs</a> · <a href="https://demo.frigade.com">Demo</a> · <a href="https://github.com/FrigadeHQ">GitHub</a>
+<a href="https://frigade.com/?utm_source=yap&utm_medium=readme">Website</a> · <a href="https://docs.frigade.com/?utm_source=yap&utm_medium=readme">Docs</a> · <a href="https://demo.frigade.com/?utm_source=yap&utm_medium=readme">Demo</a> · <a href="https://github.com/FrigadeHQ">GitHub</a>
 </div>
