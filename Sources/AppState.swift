@@ -26,10 +26,18 @@ final class AppState {
         }
     }
 
+    var functionKeyTrigger: FunctionKeyTrigger {
+        didSet {
+            UserDefaults.standard.set(functionKeyTrigger.rawValue, forKey: "functionKeyTrigger")
+            functionKeys.trigger = functionKeyTrigger
+        }
+    }
+
     private(set) var coordinator: RecordingCoordinator!
 
     private let hotkeys = HotkeyManager()
     private let modifierHotkeys = ModifierHotkeyMonitor()
+    private let functionKeys = FunctionKeyMonitor()
     private let escapeMonitor = EscapeMonitor()
     private let injector = TextInjector()
     private let hud = HUDController()
@@ -47,6 +55,9 @@ final class AppState {
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
         modifierTrigger = ModifierTrigger(
             rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
+        ) ?? .none
+        functionKeyTrigger = FunctionKeyTrigger(
+            rawValue: UserDefaults.standard.string(forKey: "functionKeyTrigger") ?? ""
         ) ?? .none
         currentInputName = AudioDevices.defaultInputName()
 
@@ -84,6 +95,13 @@ final class AppState {
         }
         modifierHotkeys.trigger = modifierTrigger
         modifierHotkeys.start()
+
+        functionKeys.onTap = { [weak self] in
+            guard let self else { return }
+            Task { await self.coordinator.toggle() }
+        }
+        functionKeys.trigger = functionKeyTrigger
+        functionKeys.start()
 
         escapeMonitor.onEscape = { [weak self] in
             self?.coordinator.handleEscape()
