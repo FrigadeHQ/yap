@@ -112,6 +112,12 @@ struct SettingsView: View {
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
                     )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    SettingsToggleRow(
+                        title: "Show icon in the macOS Dock",
+                        subtitle: "Show Yap in the Dock while it's running.",
+                        isOn: $app.showDockIcon
+                    )
                 }
             }
         }
