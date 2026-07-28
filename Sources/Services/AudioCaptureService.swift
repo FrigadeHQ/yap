@@ -1,6 +1,6 @@
 import AVFoundation
 
-/// macOS has no AVAudioSession — routing is handled by Core Audio, so we just
+/// macOS has no AVAudioSession, so routing is handled by Core Audio and we just
 /// tap the input node.
 final class AudioCaptureService {
     /// Called on the audio thread for each captured buffer.
@@ -11,31 +11,31 @@ final class AudioCaptureService {
     private let engine = AVAudioEngine()
     private(set) var isRunning = false
     private var configObserver: NSObjectProtocol?
+    private var handlingConfigChange = false
 
     func start() throws {
+        // Start from a clean slate. An observer left over from an earlier failed
+        // start would otherwise stack a second listener on the same engine, so
+        // several handlers would race to rebuild the graph on the next device
+        // change.
+        removeConfigObserver()
         installTap()
-
-        // Switching the default input reconfigures the engine and invalidates the
-        // installed tap. Handle it explicitly rather than letting a stale,
-        // half-torn-down graph keep running.
-        configObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine,
-            queue: .main
-        ) { [weak self] _ in
-            self?.handleConfigurationChange()
-        }
+        addConfigObserver()
 
         engine.prepare()
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            // Do not leave the observer or tap behind if the engine will not run.
+            removeConfigObserver()
+            engine.inputNode.removeTap(onBus: 0)
+            throw error
+        }
         isRunning = true
     }
 
     func stop() {
-        if let configObserver {
-            NotificationCenter.default.removeObserver(configObserver)
-            self.configObserver = nil
-        }
+        removeConfigObserver()
         guard isRunning else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
@@ -47,7 +47,8 @@ final class AudioCaptureService {
         input.removeTap(onBus: 0)
         let format = input.outputFormat(forBus: 0)
 
-        // 2048 frames ≈ 23 level updates/sec, which the meter needs to look alive.
+        // 2048 frames is about 23 level updates a second, which the meter needs
+        // to look alive.
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
             guard let self else { return }
             self.onBuffer?(buffer)
@@ -55,13 +56,45 @@ final class AudioCaptureService {
         }
     }
 
-    /// Re-point the tap at the (possibly new) input and restart the engine so
-    /// recording continues on the new device. Delivered on the main queue.
+    private func addConfigObserver() {
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleConfigurationChange()
+        }
+    }
+
+    private func removeConfigObserver() {
+        guard let configObserver else { return }
+        NotificationCenter.default.removeObserver(configObserver)
+        self.configObserver = nil
+    }
+
+    /// Switching the default input reconfigures the engine and invalidates the
+    /// installed tap. Re-point the tap and restart so recording continues on the
+    /// new device. Delivered on the main queue.
     private func handleConfigurationChange() {
-        guard isRunning else { return }
+        // Rebuilding the graph can itself emit another configuration change.
+        // Guard against re-entering while a rebuild is already in flight, and
+        // ignore changes once we have stopped.
+        guard isRunning, !handlingConfigChange else { return }
+        handlingConfigChange = true
+        defer { handlingConfigChange = false }
+
         installTap()
-        if !engine.isRunning {
-            try? engine.start()
+        guard !engine.isRunning else { return }
+
+        do {
+            try engine.start()
+        } catch {
+            // The new device would not start. Tear down rather than leave a
+            // half-running graph that looks alive but records nothing.
+            NSLog("Yap: audio engine could not restart after a device change: \(error.localizedDescription)")
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            isRunning = false
         }
     }
 }
