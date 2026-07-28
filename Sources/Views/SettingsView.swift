@@ -88,6 +88,26 @@ struct SettingsView: View {
                     }
                     .padding(.horizontal, Theme.s3)
                     .padding(.vertical, Theme.s2 + 2)
+
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+
+                    HStack(spacing: Theme.s3) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Function-row key").font(.system(size: 13, weight: .medium))
+                            Text("Press an F-key, or the mic key, on its own.")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: Theme.s3)
+                        Picker("", selection: $app.functionKeyTrigger) {
+                            ForEach(FunctionKeyTrigger.allCases) { trigger in
+                                Text(trigger.title).tag(trigger)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 168)
+                    }
+                    .padding(.horizontal, Theme.s3)
+                    .padding(.vertical, Theme.s2 + 2)
                 }
             }
         }
