@@ -26,6 +26,22 @@ final class AppState {
         }
     }
 
+    /// "system" follows the OS locale; otherwise a BCP-47 identifier.
+    var dictationLanguage: String {
+        didSet {
+            UserDefaults.standard.set(dictationLanguage, forKey: "dictationLanguage")
+            applyDictationLocale()
+        }
+    }
+
+    private(set) var availableLocales: [Locale] = []
+
+    var effectiveDictationLocale: Locale {
+        dictationLanguage == Self.systemLanguage ? .current : Locale(identifier: dictationLanguage)
+    }
+
+    static let systemLanguage = "system"
+
     private(set) var coordinator: RecordingCoordinator!
 
     private let hotkeys = HotkeyManager()
@@ -36,6 +52,7 @@ final class AppState {
     private let sounds = SystemSoundPlayer()
     private let deviceObserver = DefaultInputObserver()
     private var history: HistoryStore!
+    private let dictation: DictationSession
 
     private init() {
         do {
@@ -50,13 +67,20 @@ final class AppState {
         ) ?? .none
         currentInputName = AudioDevices.defaultInputName()
 
+        let language = UserDefaults.standard.string(forKey: "dictationLanguage") ?? Self.systemLanguage
+        let dictation = DictationSession(
+            locale: language == Self.systemLanguage ? .current : Locale(identifier: language)
+        )
+        self.dictation = dictation
+        dictationLanguage = language
+
         let history = HistoryStore(context: modelContainer.mainContext)
         self.history = history
 
         sounds.enabled = { [weak self] in self?.soundsEnabled ?? true }
 
         coordinator = RecordingCoordinator(
-            session: DictationSession(locale: .current),
+            session: dictation,
             injector: injector,
             history: history,
             hud: hud,
@@ -93,14 +117,35 @@ final class AppState {
         // Build the HUD window and resolve the speech model up front, so the
         // first press of the shortcut is immediate rather than paying setup cost.
         hud.prepare()
+        let locale = effectiveDictationLocale
         Task.detached(priority: .utility) {
-            await DictationSession.prewarm()
+            await DictationSession.prewarm(locale: locale)
+        }
+
+        Task { [weak self] in
+            let locales = await TranscriptionService.availableLocales()
+            self?.availableLocales = locales.sorted {
+                Self.languageName(for: $0).localizedCaseInsensitiveCompare(Self.languageName(for: $1)) == .orderedAscending
+            }
         }
 
         // Delivered on the main queue by the observer, so assign directly.
         deviceObserver.start { [weak self] name in
             self?.currentInputName = name
         }
+    }
+
+    private func applyDictationLocale() {
+        let locale = effectiveDictationLocale
+        dictation.setLocale(locale)
+        Task.detached(priority: .utility) {
+            await DictationSession.prewarm(locale: locale)
+        }
+    }
+
+    static func languageName(for locale: Locale) -> String {
+        Locale.current.localizedString(forIdentifier: locale.identifier(.bcp47))
+            ?? locale.identifier(.bcp47)
     }
 
     func toggleRecording() {

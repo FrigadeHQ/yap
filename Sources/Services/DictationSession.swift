@@ -16,7 +16,7 @@ final class DictationSession: DictationSessioning {
     private let capture = AudioCaptureService()
     private let relay = AudioBufferRelay()
     private var transcriber: StreamingTranscriber?
-    private let locale: Locale
+    private var locale: Locale
 
     /// Which engine to use and the locale to run it with. The two engines
     /// support different locale sets and neither takes `Locale.current`
@@ -32,6 +32,14 @@ final class DictationSession: DictationSessioning {
 
     init(locale: Locale = .current) {
         self.locale = locale
+    }
+
+    /// Switch dictation language while idle. Clears the resolved-engine cache so
+    /// the next recording re-resolves for the new locale.
+    func setLocale(_ newLocale: Locale) {
+        locale = newLocale
+        transcriber = nil
+        Self.cachedEngine = nil
     }
 
     static func resolveEngine(for locale: Locale) async -> Engine {

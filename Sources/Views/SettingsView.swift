@@ -10,6 +10,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: Theme.s5) {
                 historySection
                 shortcutSection
+                languageSection
                 generalSection
                 inputSection
                 permissionsSection
@@ -88,6 +89,37 @@ struct SettingsView: View {
                     .padding(.horizontal, Theme.s3)
                     .padding(.vertical, Theme.s2 + 2)
                 }
+            }
+        }
+    }
+
+    private var languageSection: some View {
+        @Bindable var app = app
+        return VStack(alignment: .leading, spacing: Theme.s3) {
+            SectionLabel("Language")
+            Card(padding: Theme.s2) {
+                HStack(spacing: Theme.s3) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Dictation language").font(.system(size: 13, weight: .medium))
+                        Text("Dictate in a language other than your system's.")
+                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: Theme.s3)
+                    Picker("", selection: $app.dictationLanguage) {
+                        Text("System default").tag(AppState.systemLanguage)
+                        if !app.availableLocales.isEmpty {
+                            Divider()
+                            ForEach(app.availableLocales, id: \.identifier) { locale in
+                                Text(AppState.languageName(for: locale))
+                                    .tag(locale.identifier(.bcp47))
+                            }
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 168)
+                }
+                .padding(.horizontal, Theme.s3)
+                .padding(.vertical, Theme.s2 + 2)
             }
         }
     }

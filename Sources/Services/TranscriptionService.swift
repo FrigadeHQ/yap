@@ -23,6 +23,10 @@ final class TranscriptionService: StreamingTranscriber {
         await resolvedLocale(for: locale) != nil
     }
 
+    static func availableLocales() async -> [Locale] {
+        await SpeechTranscriber.supportedLocales
+    }
+
     func begin(locale: Locale) async throws {
         finalized = ""
 
