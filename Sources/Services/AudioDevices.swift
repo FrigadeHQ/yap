@@ -42,29 +42,40 @@ enum AudioDevices {
 }
 
 /// Observes changes to the system default input device (e.g. AirPods connecting).
+///
+/// The callback is delivered on the main queue and only fires when the name
+/// actually changes. Core Audio would otherwise invoke the listener from a HAL
+/// thread; hopping to the main actor from there on every default-device change
+/// was a source of instability.
 final class DefaultInputObserver {
     private var address = AudioObjectPropertyAddress(
         mSelector: kAudioHardwarePropertyDefaultInputDevice,
         mScope: kAudioObjectPropertyScopeGlobal,
         mElement: kAudioObjectPropertyElementMain
     )
-    private let queue = DispatchQueue(label: "com.frigade.yap.default-input")
     private var block: AudioObjectPropertyListenerBlock?
+    private var lastName: String?
 
     func start(onChange: @escaping (String?) -> Void) {
-        let listener: AudioObjectPropertyListenerBlock = { _, _ in
-            onChange(AudioDevices.defaultInputName())
+        lastName = AudioDevices.defaultInputName()
+
+        let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            guard let self else { return }
+            let name = AudioDevices.defaultInputName()
+            guard name != self.lastName else { return }
+            self.lastName = name
+            onChange(name)
         }
         block = listener
         AudioObjectAddPropertyListenerBlock(
-            AudioObjectID(kAudioObjectSystemObject), &address, queue, listener
+            AudioObjectID(kAudioObjectSystemObject), &address, .main, listener
         )
     }
 
     func stop() {
         guard let block else { return }
         AudioObjectRemovePropertyListenerBlock(
-            AudioObjectID(kAudioObjectSystemObject), &address, queue, block
+            AudioObjectID(kAudioObjectSystemObject), &address, .main, block
         )
         self.block = nil
     }

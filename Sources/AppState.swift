@@ -97,8 +97,9 @@ final class AppState {
             await DictationSession.prewarm()
         }
 
+        // Delivered on the main queue by the observer, so assign directly.
         deviceObserver.start { [weak self] name in
-            Task { @MainActor in self?.currentInputName = name }
+            self?.currentInputName = name
         }
     }
 
