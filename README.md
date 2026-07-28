@@ -53,6 +53,37 @@ Yap into your Applications folder.
 
 Released builds are signed and notarized, so macOS opens them without complaint.
 
+### Command-line utility
+
+The repository also includes a `yap` command for transcribing audio files or the default
+microphone. Its final transcript goes to standard output, so it works naturally in scripts:
+
+```bash
+yap meeting.m4a
+yap record
+yap record --duration 30 > transcript.txt
+yap transcribe interview.wav --locale en-US --output interview.txt
+```
+
+The CLI is stricter than the menu-bar app: it only uses the modern `SpeechTranscriber` and
+only when the requested model is already installed. It never invokes Apple's model downloader
+and never falls back to a recognizer that might use the network. Run `yap locales` to list the
+on-device models available on your Mac.
+
+Build and install it from source:
+
+```bash
+brew install xcodegen
+xcodegen generate
+xcodebuild -project Yap.xcodeproj -scheme YapCLI -configuration Release \
+  -destination 'platform=macOS' -derivedDataPath .build build
+mkdir -p "$HOME/.local/bin"
+cp .build/Build/Products/Release/yap "$HOME/.local/bin/yap"
+```
+
+Make sure `$HOME/.local/bin` is on your `PATH`. File transcription needs no privacy
+permissions. The first `yap record` asks for microphone access.
+
 ## Why we built this
 
 There's no shortage of voice to text tools for macOS, and some of the open source ones are
@@ -92,6 +123,7 @@ anything that's quicker to say than type.
 - Pastes straight into the focused field of whatever app you were in
 - Local transcript history with search, copy, and delete
 - Live waveform and partial transcript while you speak
+- Optional CLI for audio files, scripted recording, and standard-output pipelines
 - Press escape twice to discard a dictation in progress
 - Follows your system default microphone, including when it changes mid-session
 - Optional launch at login, off by default
