@@ -18,19 +18,34 @@ final class DictationSession: DictationSessioning {
     private var transcriber: StreamingTranscriber?
     private let locale: Locale
 
+    /// Which engine to use and the locale to run it with. The two engines
+    /// support different locale sets and neither takes `Locale.current`
+    /// verbatim, so they are resolved together.
+    enum Engine {
+        case modern(Locale)
+        case legacy(Locale)
+    }
+
     /// Resolved once — querying supported locales is slow enough to be felt on
     /// the first keypress.
-    private static var cachedModernSupport: Bool?
+    private static var cachedEngine: Engine?
 
     init(locale: Locale = .current) {
         self.locale = locale
     }
 
+    static func resolveEngine(for locale: Locale) async -> Engine {
+        if let modern = await TranscriptionService.resolvedLocale(for: locale) {
+            return .modern(modern)
+        }
+        return .legacy(LegacyTranscriptionService.resolvedLocale(for: locale) ?? locale)
+    }
+
     static func prewarm(locale: Locale = .current) async {
-        let supported = await TranscriptionService.isSupported(locale: locale)
-        cachedModernSupport = supported
-        guard supported else { return }
-        await TranscriptionService.prepareModel(for: locale)
+        let engine = await resolveEngine(for: locale)
+        cachedEngine = engine
+        guard case .modern(let resolved) = engine else { return }
+        await TranscriptionService.prepareModel(for: resolved)
     }
 
     func start() async throws {
@@ -46,17 +61,24 @@ final class DictationSession: DictationSessioning {
         }
         try capture.start()
 
-        let supportsModern: Bool
-        if let cached = Self.cachedModernSupport {
-            supportsModern = cached
+        let resolved: Engine
+        if let cached = Self.cachedEngine {
+            resolved = cached
         } else {
-            supportsModern = await TranscriptionService.isSupported(locale: locale)
-            Self.cachedModernSupport = supportsModern
+            resolved = await Self.resolveEngine(for: locale)
+            Self.cachedEngine = resolved
         }
 
-        let engine: StreamingTranscriber = supportsModern
-            ? TranscriptionService()
-            : LegacyTranscriptionService()
+        let engine: StreamingTranscriber
+        let engineLocale: Locale
+        switch resolved {
+        case .modern(let locale):
+            engine = TranscriptionService()
+            engineLocale = locale
+        case .legacy(let locale):
+            engine = LegacyTranscriptionService()
+            engineLocale = locale
+        }
 
         engine.onPartial = { [weak self] text in
             Task { @MainActor in self?.onPartial?(text) }
@@ -64,7 +86,7 @@ final class DictationSession: DictationSessioning {
         transcriber = engine
 
         do {
-            try await engine.begin(locale: locale)
+            try await engine.begin(locale: engineLocale)
         } catch {
             capture.stop()
             relay.reset()
