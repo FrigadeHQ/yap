@@ -26,6 +26,13 @@ final class AppState {
         }
     }
 
+    var showInDock: Bool {
+        didSet {
+            UserDefaults.standard.set(showInDock, forKey: "showInDock")
+            applyDockVisibility()
+        }
+    }
+
     /// "system" follows the OS locale; otherwise a BCP-47 identifier.
     var dictationLanguage: String {
         didSet {
@@ -62,6 +69,7 @@ final class AppState {
         }
 
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
+        showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
         modifierTrigger = ModifierTrigger(
             rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
         ) ?? .none
@@ -90,6 +98,7 @@ final class AppState {
     }
 
     func bootstrap() {
+        applyDockVisibility()
         permissions.refresh()
         launchAtLogin.refresh()
 
@@ -133,6 +142,10 @@ final class AppState {
         deviceObserver.start { [weak self] name in
             self?.currentInputName = name
         }
+    }
+
+    private func applyDockVisibility() {
+        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
     }
 
     private func applyDictationLocale() {

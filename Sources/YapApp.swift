@@ -44,8 +44,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A relaunch briefly leaves the previous instance alive.
         AppRelauncher.terminateOtherInstances()
 
-        NSApp.setActivationPolicy(.regular)
-
         let app = AppState.shared
         app.bootstrap()
 

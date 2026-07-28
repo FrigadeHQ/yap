@@ -140,6 +140,12 @@ struct SettingsView: View {
                     )
                     Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
+                        title: "Show in Dock",
+                        subtitle: "Turn off to run from the menu bar only.",
+                        isOn: $app.showInDock
+                    )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    SettingsToggleRow(
                         title: "Sound feedback",
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
