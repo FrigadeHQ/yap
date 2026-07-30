@@ -15,6 +15,12 @@ struct RecordingHUDView: View {
                     Waveform(levels: model.levels)
                 }
 
+                if isProcessingPhase {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .controlSize(.small)
+                }
+
                 Spacer(minLength: Theme.s2)
 
                 if isRecordingPhase {
@@ -68,6 +74,11 @@ struct RecordingHUDView: View {
 
     private var isRecordingPhase: Bool {
         model.phase == .listening || model.phase == .confirmCancel
+    }
+
+    // Working states with no waveform, so a spinner shows they're still running.
+    private var isProcessingPhase: Bool {
+        model.phase == .transcribing || model.phase == .cleaning
     }
 
     private var title: String {

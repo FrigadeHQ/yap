@@ -24,7 +24,7 @@ final class TranscriptCleanupService: TranscriptCleaning {
 
     /// Cleanup sits between transcription and paste, so a hung request would
     /// leave the shortcut dead until it resolved.
-    private static let timeout: Duration = .seconds(10)
+    private static let timeout: Duration = .seconds(30)
 
     /// Structured output rather than free text: the schema cannot carry chatty
     /// framing like "Here is the cleaned transcript:", which would otherwise
