@@ -17,6 +17,8 @@ final class RecordingCoordinator {
     private let history: HistoryStoring
     private let hud: HUDControlling
     private let sounds: SoundPlaying
+    private let cleaner: TranscriptCleaning
+    private let cleanupEnabled: () -> Bool
     private let deviceName: () -> String?
 
     private var startedAt: Date?
@@ -31,6 +33,8 @@ final class RecordingCoordinator {
         history: HistoryStoring,
         hud: HUDControlling,
         sounds: SoundPlaying,
+        cleaner: TranscriptCleaning,
+        cleanupEnabled: @escaping () -> Bool,
         deviceName: @escaping () -> String?
     ) {
         self.session = session
@@ -38,6 +42,8 @@ final class RecordingCoordinator {
         self.history = history
         self.hud = hud
         self.sounds = sounds
+        self.cleaner = cleaner
+        self.cleanupEnabled = cleanupEnabled
         self.deviceName = deviceName
 
         session.onLevel = { [weak self] level in self?.hud.setLevel(level) }
@@ -123,12 +129,17 @@ final class RecordingCoordinator {
 
         do {
             let raw = try await session.stop()
-            let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard !text.isEmpty else {
                 hud.hide(after: 0)
                 state = .idle
                 return
+            }
+
+            if cleanupEnabled(), cleaner.isAvailable {
+                hud.setPhase(.cleaning)
+                text = await cleaner.cleanup(text)
             }
 
             state = .inserting

@@ -170,6 +170,15 @@ struct SettingsView: View {
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled
                     )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    SettingsToggleRow(
+                        title: "Clean up transcripts",
+                        subtitle: app.cleanup.isAvailable
+                            ? "Remove filler words and format lists with Apple Intelligence, on-device."
+                            : "Requires Apple Intelligence, enabled in System Settings.",
+                        isOn: $app.cleanupEnabled
+                    )
+                    .disabled(!app.cleanup.isAvailable)
                 }
             }
         }

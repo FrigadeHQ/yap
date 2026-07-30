@@ -75,6 +75,7 @@ struct RecordingHUDView: View {
         case .listening: return "Listening"
         case .confirmCancel: return "Press esc again to cancel"
         case .transcribing: return "Transcribing…"
+        case .cleaning: return "Cleaning up…"
         case .restarting: return "Restarting Yap"
         }
     }
