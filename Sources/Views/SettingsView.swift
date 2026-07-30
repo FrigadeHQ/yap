@@ -13,7 +13,9 @@ struct SettingsView: View {
                 languageSection
                 generalSection
                 inputSection
-                permissionsSection
+                if !app.permissions.allGranted {
+                    permissionsBanner
+                }
                 aboutSection
             }
             .padding(Theme.s5)
@@ -203,64 +205,41 @@ struct SettingsView: View {
         }
     }
 
-    private var permissionsSection: some View {
-        VStack(alignment: .leading, spacing: Theme.s3) {
-            SectionLabel("Permissions")
-            Card(padding: Theme.s2) {
-                VStack(spacing: 0) {
-                    PermissionRow(
-                        title: "Microphone",
-                        granted: app.permissions.microphone == .granted,
-                        action: { Task { await app.permissions.requestMicrophone() } }
-                    )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-                    PermissionRow(
-                        title: "Speech Recognition",
-                        granted: app.permissions.speech == .granted,
-                        action: { Task { await app.permissions.requestSpeech() } }
-                    )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-                    PermissionRow(
-                        title: "Accessibility",
-                        granted: app.permissions.accessibility,
-                        action: {
-                            app.permissions.requestAccessibility()
-                            app.permissions.openAccessibilitySettings()
-                        }
-                    )
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-                    PermissionRow(
-                        title: "Automation",
-                        granted: app.permissions.automation == .granted,
-                        action: {
-                            Task {
-                                await app.permissions.requestAutomation()
-                                if app.permissions.automation != .granted {
-                                    app.permissions.openAutomationSettings()
-                                }
-                            }
-                        }
-                    )
+    // Shown only when something is missing. Tapping it reopens onboarding, which
+    // is where permissions are actually granted, so Settings stays uncluttered
+    // once everything is in place.
+    private var permissionsBanner: some View {
+        Button {
+            app.openOnboarding()
+        } label: {
+            HStack(spacing: Theme.s3) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Self.warning)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Some permissions are missing")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("Yap needs them to hear you and paste into other apps. Review permissions.")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
-            }
-
-            if !app.permissions.accessibility {
-                HStack(spacing: Theme.s2) {
-                    Button("Reset & re-grant") {
-                        app.permissions.resetAccessibilityGrant()
-                    }
-                    .buttonStyle(GhostButtonStyle())
-                    Button("Restart Yap") { app.restartApp() }
-                        .buttonStyle(GhostButtonStyle())
-                }
-
-                Text("If Accessibility looks switched on but Yap still can't paste, the grant is stale after a rebuild — reset and grant it again.")
-                    .font(.system(size: 11))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(Theme.s4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Self.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                    .strokeBorder(Self.warning.opacity(0.35), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
+
+    private static let warning = Color(red: 0.95, green: 0.64, blue: 0.16)
 
     private var aboutSection: some View {
         HStack {
@@ -290,31 +269,6 @@ private struct SettingsToggleRow: View {
             Toggle("", isOn: $isOn)
                 .labelsHidden()
                 .toggleStyle(.switch)
-        }
-        .padding(.horizontal, Theme.s3)
-        .padding(.vertical, Theme.s2 + 2)
-    }
-}
-
-private struct PermissionRow: View {
-    let title: String
-    let granted: Bool
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: Theme.s3) {
-            Text(title).font(.system(size: 13, weight: .medium))
-            Spacer()
-            if granted {
-                HStack(spacing: 5) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
-                    Text("Granted").font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-            } else {
-                Button("Grant", action: action)
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12, weight: .medium))
-            }
         }
         .padding(.horizontal, Theme.s3)
         .padding(.vertical, Theme.s2 + 2)
