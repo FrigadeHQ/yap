@@ -3,6 +3,7 @@ import SwiftUI
 enum MainPage: Equatable {
     case settings
     case history
+    case dictionary
 }
 
 struct MainWindowView: View {
@@ -14,9 +15,14 @@ struct MainWindowView: View {
         Group {
             switch app.mainPage {
             case .settings:
-                SettingsView(onOpenHistory: { app.mainPage = .history })
+                SettingsView(
+                    onOpenHistory: { app.mainPage = .history },
+                    onOpenDictionary: { app.mainPage = .dictionary }
+                )
             case .history:
                 HistoryView(onBack: { app.mainPage = .settings })
+            case .dictionary:
+                DictionaryView(onBack: { app.mainPage = .settings })
             }
         }
         .frame(minWidth: 460, maxWidth: .infinity, minHeight: 520, maxHeight: .infinity)

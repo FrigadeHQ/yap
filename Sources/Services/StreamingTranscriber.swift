@@ -2,7 +2,7 @@ import AVFoundation
 
 protocol StreamingTranscriber: AnyObject {
     var onPartial: ((String) -> Void)? { get set }
-    func begin(locale: Locale) async throws
+    func begin(locale: Locale, contextualStrings: [String]) async throws
     func feed(_ buffer: AVAudioPCMBuffer)
     func finish() async throws -> String
 }

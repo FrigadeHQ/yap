@@ -27,7 +27,7 @@ final class TranscriptionService: StreamingTranscriber {
         await SpeechTranscriber.supportedLocales
     }
 
-    func begin(locale: Locale) async throws {
+    func begin(locale: Locale, contextualStrings: [String]) async throws {
         finalized = ""
 
         let transcriber = SpeechTranscriber(
@@ -40,6 +40,14 @@ final class TranscriptionService: StreamingTranscriber {
 
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
+
+        // Bias recognition toward the user's dictionary so names and jargon come
+        // out right when spoken, rather than blindly rewriting the transcript.
+        if !contextualStrings.isEmpty {
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = contextualStrings
+            try? await analyzer.setContext(context)
+        }
 
         try await Self.ensureModel(for: transcriber, locale: locale)
 

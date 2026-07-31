@@ -19,6 +19,7 @@ final class RecordingCoordinator {
     private let sounds: SoundPlaying
     private let cleaner: TranscriptCleaning
     private let cleanupEnabled: () -> Bool
+    private let vocabulary: () -> [String]
     private let deviceName: () -> String?
 
     private var startedAt: Date?
@@ -35,6 +36,7 @@ final class RecordingCoordinator {
         sounds: SoundPlaying,
         cleaner: TranscriptCleaning,
         cleanupEnabled: @escaping () -> Bool,
+        vocabulary: @escaping () -> [String],
         deviceName: @escaping () -> String?
     ) {
         self.session = session
@@ -44,6 +46,7 @@ final class RecordingCoordinator {
         self.sounds = sounds
         self.cleaner = cleaner
         self.cleanupEnabled = cleanupEnabled
+        self.vocabulary = vocabulary
         self.deviceName = deviceName
 
         session.onLevel = { [weak self] level in self?.hud.setLevel(level) }
@@ -137,9 +140,19 @@ final class RecordingCoordinator {
                 return
             }
 
+            // Deterministic dictionary pass first: instant, on device, catches
+            // first-letter mis-hearings like "brigade" -> "Frigade".
+            let terms = vocabulary()
+            if !terms.isEmpty {
+                text = DictionaryCorrection.correctFirstLetterMisses(in: text, terms: terms)
+            }
+
+            // Cleanup also applies the dictionary to messier mis-hearings. If you
+            // want your transcript cleaned, you want your names right too, so the
+            // two ride the same setting and run in one pass.
             if cleanupEnabled(), cleaner.isAvailable {
                 hud.setPhase(.cleaning)
-                text = await cleaner.cleanup(text)
+                text = await cleaner.process(text, cleanup: true, vocabulary: terms)
             }
 
             state = .inserting
