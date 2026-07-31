@@ -140,11 +140,18 @@ final class RecordingCoordinator {
                 return
             }
 
-            // Deterministic dictionary pass first: instant, on device, catches
-            // first-letter mis-hearings like "brigade" -> "Frigade".
+            // Deterministic passes first: instant, on device, no model needed.
+            text = FillerRemoval.strip(text)
             let terms = vocabulary()
             if !terms.isEmpty {
                 text = DictionaryCorrection.correctFirstLetterMisses(in: text, terms: terms)
+            }
+
+            // Removing fillers can empty a transcript that was only "um uh".
+            guard !text.isEmpty else {
+                hud.hide(after: 0)
+                state = .idle
+                return
             }
 
             // Cleanup also applies the dictionary to messier mis-hearings. If you

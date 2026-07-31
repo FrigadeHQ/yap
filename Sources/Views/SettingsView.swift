@@ -208,7 +208,7 @@ struct SettingsView: View {
                     SettingsToggleRow(
                         title: "Clean up transcripts",
                         subtitle: app.cleanup.isAvailable
-                            ? "Remove filler words and format lists with Apple Intelligence, on-device."
+                            ? "Fix punctuation, format lists, and apply spoken corrections with Apple Intelligence, on-device."
                             : "Requires Apple Intelligence, enabled in System Settings.",
                         isOn: $app.cleanupEnabled
                     )
