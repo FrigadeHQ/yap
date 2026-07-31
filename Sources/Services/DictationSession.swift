@@ -18,6 +18,10 @@ final class DictationSession: DictationSessioning {
     private var transcriber: StreamingTranscriber?
     private var locale: Locale
 
+    /// The user's dictionary, read fresh at the start of each dictation so edits
+    /// take effect on the next press with no restart.
+    var contextualStrings: () -> [String] = { [] }
+
     /// The locale the on-device transcriber will actually run, resolved from the
     /// user's locale. `.unsupported` means no on-device model covers it. We stop
     /// there rather than fall back to anything that would leave the device.
@@ -92,7 +96,7 @@ final class DictationSession: DictationSessioning {
         transcriber = engine
 
         do {
-            try await engine.begin(locale: engineLocale)
+            try await engine.begin(locale: engineLocale, contextualStrings: contextualStrings())
         } catch {
             capture.stop()
             relay.reset()

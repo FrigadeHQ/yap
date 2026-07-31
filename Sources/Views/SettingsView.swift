@@ -4,11 +4,13 @@ import KeyboardShortcuts
 struct SettingsView: View {
     @Environment(AppState.self) private var app
     var onOpenHistory: (() -> Void)?
+    var onOpenDictionary: (() -> Void)?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.s5) {
                 historySection
+                dictionarySection
                 shortcutSection
                 languageSection
                 generalSection
@@ -34,6 +36,36 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("View history").font(.system(size: 13, weight: .medium))
                     Text("Browse and copy past transcripts.")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(Theme.s4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var dictionarySection: some View {
+        Button {
+            onOpenDictionary?()
+        } label: {
+            HStack(spacing: Theme.s3) {
+                Image(systemName: "character.book.closed")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dictionary").font(.system(size: 13, weight: .medium))
+                    Text("Teach Yap names and words it often gets wrong.")
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer()

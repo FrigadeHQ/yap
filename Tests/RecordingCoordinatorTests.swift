@@ -62,7 +62,7 @@ final class FakeCleaner: TranscriptCleaning {
     var transform: (String) -> String = { $0 }
     var cleaned: [String] = []
 
-    func cleanup(_ text: String) async -> String {
+    func process(_ text: String, cleanup: Bool, vocabulary: [String]) async -> String {
         cleaned.append(text)
         return transform(text)
     }
@@ -75,7 +75,8 @@ private func makeCoordinator(
     history: FakeHistory? = nil,
     hud: FakeHUD? = nil,
     cleaner: FakeCleaner? = nil,
-    cleanupEnabled: Bool = false
+    cleanupEnabled: Bool = false,
+    vocabulary: [String] = []
 ) -> RecordingCoordinator {
     RecordingCoordinator(
         session: session ?? FakeSession(),
@@ -85,6 +86,7 @@ private func makeCoordinator(
         sounds: FakeSounds(),
         cleaner: cleaner ?? FakeCleaner(),
         cleanupEnabled: { cleanupEnabled },
+        vocabulary: { vocabulary },
         deviceName: { "Test Mic" }
     )
 }

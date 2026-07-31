@@ -11,6 +11,7 @@ final class AppState {
     let modelContainer: ModelContainer
     let permissions = PermissionsManager()
     let launchAtLogin = LaunchAtLoginService()
+    let vocabulary = VocabularyStore()
 
     var currentInputName: String?
     var soundsEnabled: Bool {
@@ -115,8 +116,11 @@ final class AppState {
             sounds: sounds,
             cleaner: cleanup,
             cleanupEnabled: { [weak self] in self?.cleanupEnabled ?? false },
+            vocabulary: { [weak self] in self?.vocabulary.terms ?? [] },
             deviceName: { [weak self] in self?.currentInputName }
         )
+
+        dictation.contextualStrings = { [weak self] in self?.vocabulary.terms ?? [] }
     }
 
     func bootstrap() {
