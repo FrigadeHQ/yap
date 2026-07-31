@@ -247,7 +247,8 @@ struct RecordingCoordinatorTests {
         await coordinator.toggle()
         await coordinator.toggle()
 
-        #expect(cleaner.cleaned == ["um so hello world"])
+        // Fillers are stripped deterministically before the model sees the text.
+        #expect(cleaner.cleaned == ["So hello world"])
         #expect(injector.delivered == ["Hello world."])
         #expect(history.saved == ["Hello world."])
         #expect(hud.phases.contains(.cleaning))
