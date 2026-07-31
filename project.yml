@@ -10,8 +10,8 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
-    MARKETING_VERSION: "0.1.6"
-    CURRENT_PROJECT_VERSION: "7"
+    MARKETING_VERSION: "0.1.7"
+    CURRENT_PROJECT_VERSION: "8"
     DEAD_CODE_STRIPPING: YES
     # Apple Silicon only. The on-device SpeechAnalyzer needs it, and the Intel
     # fallback sent audio to Apple, which we won't do.
