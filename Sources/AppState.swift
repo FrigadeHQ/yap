@@ -76,6 +76,7 @@ final class AppState {
     let cleanup = TranscriptCleanupService()
     private let deviceObserver = DefaultInputObserver()
     private var history: HistoryStore!
+    private var windowCloseObserver: NSObjectProtocol?
     private let dictation: DictationSession
 
     private init() {
@@ -125,6 +126,7 @@ final class AppState {
 
     func bootstrap() {
         applyDockVisibility()
+        observeWindowClosesForDockVisibility()
         permissions.refresh()
         launchAtLogin.refresh()
 
@@ -180,6 +182,21 @@ final class AppState {
 
     private func applyDockVisibility() {
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+    }
+
+    /// Flipping the policy to `.accessory` does not drop the Dock icon while a
+    /// window is still on screen, so turning off "Show in Dock" from Settings
+    /// leaves the icon until the window closes. Re-assert the policy once a window
+    /// closes so closing Settings actually hides it.
+    private func observeWindowClosesForDockVisibility() {
+        windowCloseObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, !self.showInDock else { return }
+                self.applyDockVisibility()
+            }
+        }
     }
 
     private func applyDictationLocale() {
