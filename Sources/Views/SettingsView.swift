@@ -137,8 +137,8 @@ struct SettingsView: View {
                     title: "Toggle dictation",
                     subtitle: isFirst ? "Press once to start, again to stop." : nil
                 ) {
-                    KeyboardShortcuts.Recorder(for: profile.shortcutName) { _ in
-                        app.shortcutChanged(for: profile)
+                    KeyboardShortcuts.Recorder(for: profile.shortcutName) { shortcut in
+                        app.shortcutChanged(to: shortcut, for: profile)
                     }
                     removeSlot(nil)
                 }

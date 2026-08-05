@@ -40,14 +40,41 @@ final class HotkeyManager {
     /// profiles, so two can end up on one combination — which would start and then
     /// instantly stop. Whoever recorded it last keeps it, as with the other
     /// triggers, and the rest are cleared.
-    func claim(_ profile: DictationProfile, among profiles: [DictationProfile]) {
-        guard let shortcut = KeyboardShortcuts.getShortcut(for: profile.shortcutName) else { return }
-        for other in profiles where other.id != profile.id {
-            if KeyboardShortcuts.getShortcut(for: other.shortcutName) == shortcut {
-                KeyboardShortcuts.setShortcut(nil, for: other.shortcutName)
-            }
+    ///
+    /// Takes the combination the recorder reports rather than reading it back:
+    /// the callback runs before the new value reaches defaults, so a read here
+    /// would still see the old one.
+    func claim(
+        _ shortcut: KeyboardShortcuts.Shortcut?,
+        for profile: DictationProfile,
+        among profiles: [DictationProfile]
+    ) {
+        guard let shortcut else { return }
+        let taken = Self.conflicts(with: shortcut, for: profile, among: profiles) {
+            KeyboardShortcuts.getShortcut(for: $0.shortcutName)
         }
+        for other in taken { KeyboardShortcuts.setShortcut(nil, for: other.shortcutName) }
     }
+
+    /// The profiles holding a combination that someone else has just claimed.
+    static func conflicts(
+        with shortcut: KeyboardShortcuts.Shortcut,
+        for profile: DictationProfile,
+        among profiles: [DictationProfile],
+        shortcutFor: (DictationProfile) -> KeyboardShortcuts.Shortcut?
+    ) -> [DictationProfile] {
+        profiles.filter { $0.id != profile.id && shortcutFor($0) == shortcut }
+    }
+
+    /// A registered combination is claimed system-wide: the OS routes it to the
+    /// hotkey rather than delivering a key press to the app. So the recorder in
+    /// Settings never sees the keys, stays empty, and saves nil — which looks
+    /// exactly like typing a taken shortcut doing nothing. Pausing is not enough;
+    /// the combinations have to come off the system while Settings has focus,
+    /// which is also the one moment nobody wants them firing.
+    func suspend() { KeyboardShortcuts.disable(bound) }
+
+    func resume() { KeyboardShortcuts.enable(bound) }
 
     /// Forgets a removed profile's combination, so it does not linger in defaults
     /// waiting for a later profile to inherit a shortcut nobody set for it.

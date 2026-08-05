@@ -72,6 +72,7 @@ final class AppState {
     private let deviceObserver = DefaultInputObserver()
     private var history: HistoryStore!
     private var windowCloseObserver: NSObjectProtocol?
+    private var recorderFocusObserver: NSObjectProtocol?
     private let dictation: DictationSession
     /// The profile the current dictation started in, which is what the HUD names.
     private var activeProfile: DictationProfile
@@ -122,6 +123,7 @@ final class AppState {
     func bootstrap() {
         applyDockVisibility()
         observeWindowClosesForDockVisibility()
+        observeRecorderFocus()
         permissions.refresh()
         launchAtLogin.refresh()
 
@@ -155,6 +157,28 @@ final class AppState {
         // Delivered on the main queue by the observer, so assign directly.
         deviceObserver.start { [weak self] name in
             self?.currentInputName = name
+        }
+    }
+
+    /// KeyboardShortcuts posts this whenever one of its recorders takes or loses
+    /// focus. The name is not public API, but it is the only hook that fires per
+    /// field rather than per window, and per field is what this needs: recording a
+    /// combination re-registers it immediately, so anything coarser works once and
+    /// then silently stops.
+    static let recorderFocusDidChange =
+        Notification.Name("KeyboardShortcuts_recorderActiveStatusDidChange")
+
+    /// See `HotkeyManager.suspend`: a combination cannot be typed into a recorder
+    /// while it is still registered, because the system takes the key press first.
+    private func observeRecorderFocus() {
+        recorderFocusObserver = NotificationCenter.default.addObserver(
+            forName: Self.recorderFocusDidChange, object: nil, queue: .main
+        ) { [weak self] notification in
+            let isFocused = notification.userInfo?["isActive"] as? Bool ?? false
+            Task { @MainActor in
+                guard let self else { return }
+                isFocused ? self.hotkeys.suspend() : self.hotkeys.resume()
+            }
         }
     }
 
@@ -197,8 +221,8 @@ final class AppState {
 
     /// The shortcut recorder saves itself, so this is only about the effect that
     /// has on the other profiles.
-    func shortcutChanged(for profile: DictationProfile) {
-        hotkeys.claim(profile, among: profiles)
+    func shortcutChanged(to shortcut: KeyboardShortcuts.Shortcut?, for profile: DictationProfile) {
+        hotkeys.claim(shortcut, for: profile, among: profiles)
     }
 
     /// Points every monitor at the current profiles and gets each language ready.
