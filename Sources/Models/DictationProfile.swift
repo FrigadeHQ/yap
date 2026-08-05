@@ -36,4 +36,16 @@ struct DictationProfile: Codable, Identifiable, Hashable {
         self.modifierTrigger = modifierTrigger
         self.functionKeyTrigger = functionKeyTrigger
     }
+
+    /// The locale to dictate in. `systemLanguage` is resolved on read, so changing
+    /// the OS language takes effect without editing the profile.
+    var locale: Locale {
+        language == Self.systemLanguage ? .current : Locale(identifier: language)
+    }
+
+    /// A short tag like "DE" for the recording window, which has no room for
+    /// "German", let alone "German (Germany)".
+    var languageTag: String {
+        locale.language.languageCode?.identifier.uppercased() ?? language.uppercased()
+    }
 }

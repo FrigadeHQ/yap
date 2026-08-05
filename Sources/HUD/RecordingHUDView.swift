@@ -11,8 +11,18 @@ struct RecordingHUDView: View {
                     .foregroundStyle(model.phase == .confirmCancel ? Theme.recording : .primary)
                     .fixedSize(horizontal: true, vertical: false)
 
+                if let language = model.language, model.phase != .restarting {
+                    LanguageTag(text: language)
+                }
+
                 if isRecordingPhase {
-                    Waveform(levels: model.levels)
+                    // The row is a fixed width, so the tag has to come out of
+                    // somewhere. A slightly shorter trace costs less than pushing
+                    // the confirm and cancel buttons off the card.
+                    Waveform(
+                        levels: model.levels,
+                        bars: model.language == nil ? Waveform.bars : Waveform.barsBesideLanguageTag
+                    )
                 }
 
                 if isProcessingPhase {
@@ -92,6 +102,23 @@ struct RecordingHUDView: View {
     }
 }
 
+/// Which language is listening, for people who dictate in more than one. Small
+/// enough to read past without noticing when there is only ever one answer.
+private struct LanguageTag: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(0.4)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.primary.opacity(0.08)))
+            .fixedSize()
+    }
+}
+
 private struct HUDButton: View {
     let systemName: String
     var tint: Color = .secondary
@@ -125,6 +152,13 @@ private struct HUDButton: View {
 /// whole meter rising and falling as one.
 private struct Waveform: View {
     let levels: [Float]
+    /// Trimmed from the oldest end, so the newest sample stays at the right edge
+    /// however much room the rest of the row leaves.
+    let bars: Int
+
+    static let bars = HUDModel.waveformSampleCount
+    /// Ten bars is a shade more than the tag needs, so the row keeps a little slack.
+    static let barsBesideLanguageTag = HUDModel.waveformSampleCount - 10
 
     private let barWidth: CGFloat = 2.5
     private let spacing: CGFloat = 2
@@ -132,16 +166,17 @@ private struct Waveform: View {
     private let maxHeight: CGFloat = 22
 
     var body: some View {
+        let visible = Array(levels.suffix(bars))
         HStack(alignment: .center, spacing: spacing) {
-            ForEach(Array(levels.enumerated()), id: \.offset) { index, level in
+            ForEach(Array(visible.enumerated()), id: \.offset) { index, level in
                 Capsule()
-                    .fill(Color.primary.opacity(opacity(for: index)))
+                    .fill(Color.primary.opacity(opacity(for: index, of: visible.count)))
                     .frame(width: barWidth, height: height(for: level))
             }
         }
         .frame(height: maxHeight)
         // Just enough to smooth the step between samples without adding lag.
-        .animation(.easeOut(duration: 0.06), value: levels)
+        .animation(.easeOut(duration: 0.06), value: visible)
     }
 
     private func height(for level: Float) -> CGFloat {
@@ -149,9 +184,9 @@ private struct Waveform: View {
     }
 
     /// Older samples fade out, which gives the trace a sense of direction.
-    private func opacity(for index: Int) -> Double {
-        guard levels.count > 1 else { return 0.85 }
-        let age = Double(index) / Double(levels.count - 1)
+    private func opacity(for index: Int, of count: Int) -> Double {
+        guard count > 1 else { return 0.85 }
+        let age = Double(index) / Double(count - 1)
         return 0.28 + 0.57 * age
     }
 }

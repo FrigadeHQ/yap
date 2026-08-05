@@ -11,6 +11,8 @@ final class HUDModel {
     var levels: [Float] = Array(repeating: 0, count: HUDModel.waveformSampleCount)
     var partial: String = ""
     var device: String?
+    // A short tag like "DE", or nil when the user would rather not see it.
+    var language: String?
 
     var onConfirm: (() -> Void)?
     var onCancel: (() -> Void)?

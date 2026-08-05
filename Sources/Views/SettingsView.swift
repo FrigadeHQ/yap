@@ -237,6 +237,12 @@ struct SettingsView: View {
                     )
                     Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
+                        title: "Show language while recording",
+                        subtitle: "Tag the recording window with the language it is listening in.",
+                        isOn: $app.showLanguageInHUD
+                    )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    SettingsToggleRow(
                         title: "Sound feedback",
                         subtitle: "Play a cue when recording starts and stops.",
                         isOn: $app.soundsEnabled

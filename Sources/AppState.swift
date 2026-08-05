@@ -28,6 +28,10 @@ final class AppState {
 
     var mainPage: MainPage = .settings
 
+    var showLanguageInHUD: Bool {
+        didSet { UserDefaults.standard.set(showLanguageInHUD, forKey: "showLanguageInHUD") }
+    }
+
     var showInDock: Bool {
         didSet {
             UserDefaults.standard.set(showInDock, forKey: "showInDock")
@@ -69,6 +73,8 @@ final class AppState {
     private var history: HistoryStore!
     private var windowCloseObserver: NSObjectProtocol?
     private let dictation: DictationSession
+    /// The profile the current dictation started in, which is what the HUD names.
+    private var activeProfile: DictationProfile
 
     private init() {
         do {
@@ -79,12 +85,14 @@ final class AppState {
 
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
         showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
+        showLanguageInHUD = (UserDefaults.standard.object(forKey: "showLanguageInHUD") as? Bool) ?? false
         cleanupEnabled = (UserDefaults.standard.object(forKey: "cleanupEnabled") as? Bool) ?? false
         currentInputName = AudioDevices.defaultInputName()
 
         // Whichever trigger fires picks the language, but something has to be
         // loaded before the first press — the first profile is the safe guess.
-        let dictation = DictationSession(locale: Self.locale(for: profileStore.profiles[0].language))
+        activeProfile = profileStore.profiles[0]
+        let dictation = DictationSession(locale: profileStore.profiles[0].locale)
         self.dictation = dictation
 
         let history = HistoryStore(context: modelContainer.mainContext)
@@ -101,7 +109,11 @@ final class AppState {
             cleaner: cleanup,
             cleanupEnabled: { [weak self] in self?.cleanupEnabled ?? false },
             vocabulary: { [weak self] in self?.vocabulary.terms ?? [] },
-            deviceName: { [weak self] in self?.currentInputName }
+            deviceName: { [weak self] in self?.currentInputName },
+            language: { [weak self] in
+                guard let self, self.showLanguageInHUD else { return nil }
+                return self.activeProfile.languageTag
+            }
         )
 
         dictation.contextualStrings = { [weak self] in self?.vocabulary.terms ?? [] }
@@ -199,7 +211,7 @@ final class AppState {
 
         // Resolving a locale and staging its model is slow enough to be felt on the
         // first press, so every language a trigger could ask for is warmed now.
-        for locale in Set(profiles.map(\.language)).map(Self.locale(for:)) {
+        for locale in Set(profiles.map(\.locale)) {
             Task.detached(priority: .utility) {
                 await DictationSession.prewarm(locale: locale)
             }
@@ -212,13 +224,10 @@ final class AppState {
     private func start(profile id: UUID) {
         guard let profile = profiles.first(where: { $0.id == id }) else { return }
         if coordinator.state == .idle {
-            dictation.setLocale(Self.locale(for: profile.language))
+            activeProfile = profile
+            dictation.setLocale(profile.locale)
         }
         Task { await coordinator.toggle() }
-    }
-
-    static func locale(for language: String) -> Locale {
-        language == DictationProfile.systemLanguage ? .current : Locale(identifier: language)
     }
 
     static func languageName(for locale: Locale) -> String {
@@ -235,7 +244,7 @@ final class AppState {
     /// away audio the user already spoke.
     func restartApp() {
         guard coordinator.state == .idle else { return }
-        hud.show(device: nil)
+        hud.show(device: nil, language: nil)
         hud.setPhase(.restarting)
         Task {
             try? await Task.sleep(nanoseconds: 900_000_000)
