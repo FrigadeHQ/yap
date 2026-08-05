@@ -9,7 +9,7 @@ import Carbon.HIToolbox
 /// dictation before any hotkey fires. So this uses a CGEvent tap at the HID
 /// level, inserted at the head of the chain, which sees the press before the
 /// system does and consumes it so the built-in action never triggers.
-enum FunctionKeyTrigger: String, CaseIterable, Identifiable {
+enum FunctionKeyTrigger: String, Codable, CaseIterable, Identifiable {
     case none
     case dictation
     case f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12
@@ -59,14 +59,27 @@ enum FunctionKeyTrigger: String, CaseIterable, Identifiable {
         guard !isRepeat, trigger.keyCodes.contains(keyCode) else { return false }
         return flags.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift]).isEmpty
     }
+
+    /// The profile whose function key was pressed, if any. One tap serves every
+    /// profile, so the press has to be matched against all of them.
+    static func match(
+        bindings: [(id: UUID, trigger: FunctionKeyTrigger)],
+        keyCode: Int64,
+        flags: CGEventFlags,
+        isRepeat: Bool
+    ) -> UUID? {
+        bindings.first {
+            shouldFire(trigger: $0.trigger, keyCode: keyCode, flags: flags, isRepeat: isRepeat)
+        }?.id
+    }
 }
 
 @MainActor
 final class FunctionKeyMonitor {
-    var trigger: FunctionKeyTrigger = .none {
+    var bindings: [(id: UUID, trigger: FunctionKeyTrigger)] = [] {
         didSet { sync() }
     }
-    var onTap: (() -> Void)?
+    var onTap: ((UUID) -> Void)?
 
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -77,12 +90,12 @@ final class FunctionKeyMonitor {
 
     /// The tap only exists while a trigger is configured. No key trigger, no
     /// keyboard tap — Yap should not be in the key event path at all unless
-    /// the user asked for it.
+    /// the user asked for it. One tap covers every profile.
     private func sync() {
-        if trigger == .none {
-            uninstall()
-        } else {
+        if bindings.contains(where: { $0.trigger != .none }) {
             install()
+        } else {
+            uninstall()
         }
     }
 
@@ -149,15 +162,15 @@ final class FunctionKeyMonitor {
         let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
         // The tap's run-loop source is scheduled on the main loop, so this
         // callback is already on the main thread — assumeIsolated, don't sync.
-        let shouldFire = MainActor.assumeIsolated {
-            FunctionKeyTrigger.shouldFire(
-                trigger: trigger, keyCode: keyCode, flags: event.flags, isRepeat: isRepeat
+        let matched = MainActor.assumeIsolated {
+            FunctionKeyTrigger.match(
+                bindings: bindings, keyCode: keyCode, flags: event.flags, isRepeat: isRepeat
             )
         }
 
-        guard shouldFire else { return Unmanaged.passUnretained(event) }
+        guard let matched else { return Unmanaged.passUnretained(event) }
 
-        DispatchQueue.main.async { [weak self] in self?.onTap?() }
+        DispatchQueue.main.async { [weak self] in self?.onTap?(matched) }
         // Swallow it: for the dictation key this is what keeps macOS's own
         // dictation from popping up alongside Yap.
         return nil

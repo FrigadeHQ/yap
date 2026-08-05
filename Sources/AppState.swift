@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import KeyboardShortcuts
 import Observation
 import SwiftData
 
@@ -27,20 +28,6 @@ final class AppState {
 
     var mainPage: MainPage = .settings
 
-    var modifierTrigger: ModifierTrigger {
-        didSet {
-            UserDefaults.standard.set(modifierTrigger.rawValue, forKey: "modifierTrigger")
-            modifierHotkeys.trigger = modifierTrigger
-        }
-    }
-
-    var functionKeyTrigger: FunctionKeyTrigger {
-        didSet {
-            UserDefaults.standard.set(functionKeyTrigger.rawValue, forKey: "functionKeyTrigger")
-            functionKeys.trigger = functionKeyTrigger
-        }
-    }
-
     var showInDock: Bool {
         didSet {
             UserDefaults.standard.set(showInDock, forKey: "showInDock")
@@ -48,24 +35,28 @@ final class AppState {
         }
     }
 
-    /// "system" follows the OS locale; otherwise a BCP-47 identifier.
-    var dictationLanguage: String {
-        didSet {
-            UserDefaults.standard.set(dictationLanguage, forKey: "dictationLanguage")
-            applyDictationLocale()
-        }
-    }
-
     private(set) var availableLocales: [Locale] = []
 
-    var effectiveDictationLocale: Locale {
-        dictationLanguage == Self.systemLanguage ? .current : Locale(identifier: dictationLanguage)
-    }
+    /// Each profile is a language and the triggers that start dictation in it, so
+    /// switching from English to German is a different key rather than a visit
+    /// here. There is always at least one.
+    var profiles: [DictationProfile] { profileStore.profiles }
 
-    static let systemLanguage = "system"
+    /// What onboarding should tell the user to press: the first profile's key
+    /// combination, or whichever key it uses instead. Nil when nothing is bound.
+    var firstTriggerDescription: String? {
+        let profile = profiles[0]
+        if let shortcut = KeyboardShortcuts.getShortcut(for: profile.shortcutName) {
+            return "\(shortcut)"
+        }
+        if profile.modifierTrigger != .none { return profile.modifierTrigger.title }
+        if profile.functionKeyTrigger != .none { return profile.functionKeyTrigger.title }
+        return nil
+    }
 
     private(set) var coordinator: RecordingCoordinator!
 
+    private let profileStore = DictationProfileStore()
     private let hotkeys = HotkeyManager()
     private let modifierHotkeys = ModifierHotkeyMonitor()
     private let functionKeys = FunctionKeyMonitor()
@@ -89,20 +80,12 @@ final class AppState {
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
         showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
         cleanupEnabled = (UserDefaults.standard.object(forKey: "cleanupEnabled") as? Bool) ?? false
-        modifierTrigger = ModifierTrigger(
-            rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
-        ) ?? .none
-        functionKeyTrigger = FunctionKeyTrigger(
-            rawValue: UserDefaults.standard.string(forKey: "functionKeyTrigger") ?? ""
-        ) ?? .none
         currentInputName = AudioDevices.defaultInputName()
 
-        let language = UserDefaults.standard.string(forKey: "dictationLanguage") ?? Self.systemLanguage
-        let dictation = DictationSession(
-            locale: language == Self.systemLanguage ? .current : Locale(identifier: language)
-        )
+        // Whichever trigger fires picks the language, but something has to be
+        // loaded before the first press — the first profile is the safe guess.
+        let dictation = DictationSession(locale: Self.locale(for: profileStore.profiles[0].language))
         self.dictation = dictation
-        dictationLanguage = language
 
         let history = HistoryStore(context: modelContainer.mainContext)
         self.history = history
@@ -134,23 +117,10 @@ final class AppState {
         // keeps the UI honest the moment the user grants it.
         permissions.startObserving()
 
-        hotkeys.onToggle { [weak self] in
-            guard let self else { return }
-            Task { await self.coordinator.toggle() }
-        }
-
-        modifierHotkeys.onTap = { [weak self] in
-            guard let self else { return }
-            Task { await self.coordinator.toggle() }
-        }
-        modifierHotkeys.trigger = modifierTrigger
+        modifierHotkeys.onTap = { [weak self] id in self?.start(profile: id) }
+        functionKeys.onTap = { [weak self] id in self?.start(profile: id) }
+        applyProfiles()
         modifierHotkeys.start()
-
-        functionKeys.onTap = { [weak self] in
-            guard let self else { return }
-            Task { await self.coordinator.toggle() }
-        }
-        functionKeys.trigger = functionKeyTrigger
         functionKeys.start()
 
         escapeMonitor.onEscape = { [weak self] in
@@ -158,13 +128,9 @@ final class AppState {
         }
         escapeMonitor.start()
 
-        // Build the HUD window and resolve the speech model up front, so the
-        // first press of the shortcut is immediate rather than paying setup cost.
+        // Build the HUD window up front, so the first press of the shortcut is
+        // immediate rather than paying setup cost.
         hud.prepare()
-        let locale = effectiveDictationLocale
-        Task.detached(priority: .utility) {
-            await DictationSession.prewarm(locale: locale)
-        }
 
         Task { [weak self] in
             let locales = await TranscriptionService.availableLocales()
@@ -199,12 +165,60 @@ final class AppState {
         }
     }
 
-    private func applyDictationLocale() {
-        let locale = effectiveDictationLocale
-        dictation.setLocale(locale)
-        Task.detached(priority: .utility) {
-            await DictationSession.prewarm(locale: locale)
+    func addProfile() {
+        profileStore.add()
+        applyProfiles()
+    }
+
+    func removeProfile(_ id: UUID) {
+        guard let profile = profiles.first(where: { $0.id == id }) else { return }
+        profileStore.remove(id)
+        // Only once the store agreed to drop it — it keeps the last profile.
+        if !profiles.contains(where: { $0.id == id }) { hotkeys.forget(profile) }
+        applyProfiles()
+    }
+
+    func updateProfile(_ profile: DictationProfile) {
+        profileStore.update(profile)
+        applyProfiles()
+    }
+
+    /// The shortcut recorder saves itself, so this is only about the effect that
+    /// has on the other profiles.
+    func shortcutChanged(for profile: DictationProfile) {
+        hotkeys.claim(profile, among: profiles)
+    }
+
+    /// Points every monitor at the current profiles and gets each language ready.
+    /// Cheap enough to re-run on any edit, which keeps it the single path.
+    private func applyProfiles() {
+        let profiles = self.profiles
+        hotkeys.bind(profiles) { [weak self] id in self?.start(profile: id) }
+        modifierHotkeys.bindings = profiles.map { ($0.id, $0.modifierTrigger) }
+        functionKeys.bindings = profiles.map { ($0.id, $0.functionKeyTrigger) }
+
+        // Resolving a locale and staging its model is slow enough to be felt on the
+        // first press, so every language a trigger could ask for is warmed now.
+        for locale in Set(profiles.map(\.language)).map(Self.locale(for:)) {
+            Task.detached(priority: .utility) {
+                await DictationSession.prewarm(locale: locale)
+            }
         }
+    }
+
+    /// Starts, or stops, dictation in the profile's language. The language is only
+    /// swapped when a dictation is beginning: a second press is a stop, and moving
+    /// the locale mid-flight would drop the transcriber holding the audio.
+    private func start(profile id: UUID) {
+        guard let profile = profiles.first(where: { $0.id == id }) else { return }
+        if coordinator.state == .idle {
+            dictation.setLocale(Self.locale(for: profile.language))
+        }
+        Task { await coordinator.toggle() }
+    }
+
+    static func locale(for language: String) -> Locale {
+        language == DictationProfile.systemLanguage ? .current : Locale(identifier: language)
     }
 
     static func languageName(for locale: Locale) -> String {
@@ -212,8 +226,9 @@ final class AppState {
             ?? locale.identifier(.bcp47)
     }
 
+    /// The menu bar has no language of its own, so it uses the first profile's.
     func toggleRecording() {
-        Task { await coordinator.toggle() }
+        start(profile: profiles[0].id)
     }
 
     /// Manual restart escape hatch. Never runs mid-dictation — that would throw

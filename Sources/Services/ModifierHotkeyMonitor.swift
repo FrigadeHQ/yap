@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 
 /// Carbon hotkeys always require a real key alongside modifiers, so a bare
 /// modifier can't be one — we watch `flagsChanged` for a clean tap instead.
-enum ModifierTrigger: String, CaseIterable, Identifiable {
+enum ModifierTrigger: String, Codable, CaseIterable, Identifiable {
     case none
     case rightShift, leftShift
     case rightCommand, leftCommand
@@ -58,20 +58,65 @@ enum ModifierTrigger: String, CaseIterable, Identifiable {
 
 /// "Clean tap" means pressed and released quickly on its own — so holding
 /// Right Shift to type a capital letter never fires the trigger.
-@MainActor
-final class ModifierHotkeyMonitor {
-    var trigger: ModifierTrigger = .none {
-        didSet { reset() }
-    }
-    var onTap: (() -> Void)?
+///
+/// Kept apart from the monitor below so the rules can be tested without
+/// synthesizing NSEvents. State is per key: two profiles can bind Left and Right
+/// Option, and both can be down at once.
+struct ModifierTapRecognizer {
+    var bindings: [(id: UUID, trigger: ModifierTrigger)] = []
 
     /// Longer than this and it was a hold, not a tap.
     private let maximumTapDuration: TimeInterval = 0.6
 
+    private var held: [UInt16: (pressedAt: Date, dirty: Bool)] = [:]
+
+    /// Returns the profile whose modifier was just tapped cleanly, if any.
+    mutating func flagsChanged(
+        keyCode: UInt16, flags: NSEvent.ModifierFlags, at now: Date
+    ) -> UUID? {
+        // Another modifier moved while ours was held — that's a combo, not a tap.
+        for key in held.keys where key != keyCode { held[key]?.dirty = true }
+
+        guard let binding = bindings.first(where: { $0.trigger.keyCode == keyCode }),
+              let flag = binding.trigger.flag
+        else { return nil }
+
+        if flags.contains(flag) {
+            held[keyCode] = (pressedAt: now, dirty: false)
+            return nil
+        }
+
+        guard let press = held.removeValue(forKey: keyCode), !press.dirty else { return nil }
+        guard now.timeIntervalSince(press.pressedAt) < maximumTapDuration else { return nil }
+
+        // Anything still held means the user was building a combination. Left and
+        // Right Option share a flag, so this also covers releasing one of a pair.
+        guard flags.intersection(.deviceIndependentFlagsMask).isEmpty else { return nil }
+        return binding.id
+    }
+
+    /// A key or mouse press arrived, so nothing currently held is a bare tap.
+    mutating func interrupted() {
+        for key in held.keys { held[key]?.dirty = true }
+    }
+
+    mutating func reset() {
+        held.removeAll()
+    }
+}
+
+@MainActor
+final class ModifierHotkeyMonitor {
+    var bindings: [(id: UUID, trigger: ModifierTrigger)] = [] {
+        didSet {
+            recognizer.bindings = bindings
+            recognizer.reset()
+        }
+    }
+    var onTap: ((UUID) -> Void)?
+
+    private var recognizer = ModifierTapRecognizer()
     private var monitors: [Any] = []
-    private var isHolding = false
-    private var usedInCombination = false
-    private var pressedAt: Date?
 
     func start() {
         stop()
@@ -79,18 +124,18 @@ final class ModifierHotkeyMonitor {
         // Global monitors observe other apps; local ones cover Yap's own windows.
         addGlobal(matching: .flagsChanged) { [weak self] event in self?.handleFlags(event) }
         addGlobal(matching: [.keyDown, .leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.usedInCombination = true
+            self?.recognizer.interrupted()
         }
         addLocal(matching: .flagsChanged) { [weak self] event in self?.handleFlags(event) }
         addLocal(matching: [.keyDown, .leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.usedInCombination = true
+            self?.recognizer.interrupted()
         }
     }
 
     func stop() {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors.removeAll()
-        reset()
+        recognizer.reset()
     }
 
     private func addGlobal(matching mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> Void) {
@@ -110,40 +155,10 @@ final class ModifierHotkeyMonitor {
         }
     }
 
-    private func reset() {
-        isHolding = false
-        usedInCombination = false
-        pressedAt = nil
-    }
-
     private func handleFlags(_ event: NSEvent) {
-        guard let keyCode = trigger.keyCode, let flag = trigger.flag else { return }
-
-        guard event.keyCode == keyCode else {
-            // A different modifier moved while ours was held — that's a combo.
-            if isHolding { usedInCombination = true }
-            return
-        }
-
-        let isDown = event.modifierFlags.contains(flag)
-        if isDown {
-            isHolding = true
-            usedInCombination = false
-            pressedAt = Date()
-            return
-        }
-
-        guard isHolding else { return }
-        isHolding = false
-        let heldFor = pressedAt.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
-        pressedAt = nil
-
-        let noModifiersRemain = event.modifierFlags
-            .intersection(.deviceIndependentFlagsMask)
-            .isEmpty
-
-        if !usedInCombination, heldFor < maximumTapDuration, noModifiersRemain {
-            onTap?()
-        }
+        let tapped = recognizer.flagsChanged(
+            keyCode: event.keyCode, flags: event.modifierFlags, at: Date()
+        )
+        if let tapped { onTap?(tapped) }
     }
 }

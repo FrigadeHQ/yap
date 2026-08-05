@@ -11,8 +11,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: Theme.s5) {
                 historySection
                 dictionarySection
-                shortcutSection
-                languageSection
+                dictationSection
                 generalSection
                 inputSection
                 if !app.permissions.allGranted {
@@ -85,82 +84,39 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private var shortcutSection: some View {
-        @Bindable var app = app
-        return VStack(alignment: .leading, spacing: Theme.s3) {
-            SectionLabel("Shortcut")
-            Card(padding: Theme.s2) {
-                VStack(spacing: 0) {
-                    HStack(spacing: Theme.s3) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Toggle dictation").font(.system(size: 13, weight: .medium))
-                            Text("Press once to start, again to stop.")
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: Theme.s3)
-                        KeyboardShortcuts.Recorder(for: .toggleRecording)
-                    }
-                    .padding(.horizontal, Theme.s3)
-                    .padding(.vertical, Theme.s2 + 2)
-
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-
-                    HStack(spacing: Theme.s3) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Single modifier key").font(.system(size: 13, weight: .medium))
-                            Text("Tap a modifier on its own, like Right Shift.")
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: Theme.s3)
-                        Picker("", selection: $app.modifierTrigger) {
-                            ForEach(ModifierTrigger.allCases) { trigger in
-                                Text(trigger.title).tag(trigger)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 168)
-                    }
-                    .padding(.horizontal, Theme.s3)
-                    .padding(.vertical, Theme.s2 + 2)
-
-                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
-
-                    HStack(spacing: Theme.s3) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Function-row key").font(.system(size: 13, weight: .medium))
-                            Text("Press an F-key, or the mic key, on its own.")
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: Theme.s3)
-                        Picker("", selection: $app.functionKeyTrigger) {
-                            ForEach(FunctionKeyTrigger.allCases) { trigger in
-                                Text(trigger.title).tag(trigger)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 168)
-                    }
-                    .padding(.horizontal, Theme.s3)
-                    .padding(.vertical, Theme.s2 + 2)
+    /// One card per language. Only the first carries the explanatory subtitles —
+    /// repeating them on every card buries the settings they describe.
+    private var dictationSection: some View {
+        VStack(alignment: .leading, spacing: Theme.s3) {
+            SectionLabel("Dictation")
+            ForEach(Array(app.profiles.enumerated()), id: \.element.id) { index, profile in
+                profileCard(profile, isFirst: index == 0)
+            }
+            Button {
+                app.addProfile()
+            } label: {
+                HStack(spacing: Theme.s2) {
+                    Image(systemName: "plus").font(.system(size: 11, weight: .semibold))
+                    Text("Add a language")
                 }
             }
+            .buttonStyle(GhostButtonStyle())
+            Text("Each language gets its own triggers, so a different key dictates in a different language. Two languages cannot share one trigger.")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private var languageSection: some View {
-        @Bindable var app = app
-        return VStack(alignment: .leading, spacing: Theme.s3) {
-            SectionLabel("Language")
-            Card(padding: Theme.s2) {
-                HStack(spacing: Theme.s3) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Dictation language").font(.system(size: 13, weight: .medium))
-                        Text("Dictate in a language other than your system's.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: Theme.s3)
-                    Picker("", selection: $app.dictationLanguage) {
-                        Text("System default").tag(AppState.systemLanguage)
+    private func profileCard(_ profile: DictationProfile, isFirst: Bool) -> some View {
+        Card(padding: Theme.s2) {
+            VStack(spacing: 0) {
+                DictationRow(
+                    title: "Language",
+                    subtitle: isFirst ? "Dictate in a language other than your system's." : nil
+                ) {
+                    Picker("", selection: binding(profile, \.language)) {
+                        Text("System default").tag(DictationProfile.systemLanguage)
                         if !app.availableLocales.isEmpty {
                             Divider()
                             ForEach(app.availableLocales, id: \.identifier) { locale in
@@ -171,11 +127,92 @@ struct SettingsView: View {
                     }
                     .labelsHidden()
                     .frame(width: 168)
+                    // The first card is the one Yap falls back to, so it stays.
+                    removeSlot(isFirst ? nil : profile)
                 }
-                .padding(.horizontal, Theme.s3)
-                .padding(.vertical, Theme.s2 + 2)
+
+                Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+
+                DictationRow(
+                    title: "Toggle dictation",
+                    subtitle: isFirst ? "Press once to start, again to stop." : nil
+                ) {
+                    KeyboardShortcuts.Recorder(for: profile.shortcutName) { _ in
+                        app.shortcutChanged(for: profile)
+                    }
+                    removeSlot(nil)
+                }
+
+                Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+
+                DictationRow(
+                    title: "Single modifier key",
+                    subtitle: isFirst ? "Tap a modifier on its own, like Right Shift." : nil
+                ) {
+                    Picker("", selection: binding(profile, \.modifierTrigger)) {
+                        ForEach(ModifierTrigger.allCases) { trigger in
+                            Text(trigger.title).tag(trigger)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 168)
+                    removeSlot(nil)
+                }
+
+                Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+
+                DictationRow(
+                    title: "Function-row key",
+                    subtitle: isFirst ? "Press an F-key, or the mic key, on its own." : nil
+                ) {
+                    Picker("", selection: binding(profile, \.functionKeyTrigger)) {
+                        ForEach(FunctionKeyTrigger.allCases) { trigger in
+                            Text(trigger.title).tag(trigger)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 168)
+                    removeSlot(nil)
+                }
             }
         }
+    }
+
+    /// Reserved on every row, filled on one, so the controls stay in a single
+    /// column whether or not the card can be removed.
+    private func removeSlot(_ profile: DictationProfile?) -> some View {
+        Group {
+            if let profile {
+                Button {
+                    app.removeProfile(profile.id)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Remove this language")
+            } else {
+                Color.clear
+            }
+        }
+        .frame(width: 12)
+    }
+
+    /// Profiles are edited through the store rather than in place, so each control
+    /// writes its one field back into a copy.
+    private func binding<Value>(
+        _ profile: DictationProfile,
+        _ field: WritableKeyPath<DictationProfile, Value>
+    ) -> Binding<Value> {
+        Binding(
+            get: { profile[keyPath: field] },
+            set: { newValue in
+                var updated = profile
+                updated[keyPath: field] = newValue
+                app.updateProfile(updated)
+            }
+        )
     }
 
     private var generalSection: some View {
@@ -281,6 +318,29 @@ struct SettingsView: View {
             Text("MIT licensed")
                 .font(.system(size: 11)).foregroundStyle(.tertiary)
         }
+    }
+}
+
+/// Same hand-rolled label as `SettingsToggleRow`, for the rows whose control is a
+/// picker or a shortcut recorder rather than a switch.
+private struct DictationRow<Control: View>: View {
+    let title: String
+    var subtitle: String?
+    @ViewBuilder var control: Control
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Theme.s3) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13, weight: .medium))
+                if let subtitle {
+                    Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: Theme.s3)
+            control
+        }
+        .padding(.horizontal, Theme.s3)
+        .padding(.vertical, Theme.s2 + 2)
     }
 }
 
