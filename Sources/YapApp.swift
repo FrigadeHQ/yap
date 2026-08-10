@@ -23,7 +23,7 @@ struct YapApp: App {
     private var isRecording: Bool { app.coordinator.state != .idle }
 
     var body: some Scene {
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $app.showInMenuBar) {
             Button(isRecording ? "Stop Dictation" : "Start Dictation") {
                 app.toggleRecording()
             }

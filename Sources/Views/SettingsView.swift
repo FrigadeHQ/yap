@@ -195,8 +195,18 @@ struct SettingsView: View {
                     Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
                         title: "Show in Dock",
-                        subtitle: "Turn off to run from the menu bar only.",
+                        subtitle: app.showInMenuBar
+                            ? "Turn off to run from the menu bar only."
+                            : "The menu bar icon is off too, so open Yap from Spotlight to get back here.",
                         isOn: $app.showInDock
+                    )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    SettingsToggleRow(
+                        title: "Show in menu bar",
+                        subtitle: app.showInDock
+                            ? "Turn off to run from the Dock only."
+                            : "The Dock icon is off too, so open Yap from Spotlight to get back here.",
+                        isOn: $app.showInMenuBar
                     )
                     Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
