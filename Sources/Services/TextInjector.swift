@@ -24,7 +24,11 @@ final class TextInjector: TextInjecting {
     /// pasteboard asynchronously, so restoring quickly hands the renderer stale
     /// data and the paste silently produces nothing. Native apps read
     /// synchronously on ⌘V and are unaffected.
-    private static let restoreDelay: TimeInterval = 1.5
+    ///
+    /// This is also how long the transcript lingers on the clipboard after we
+    /// paste it, so a manual ⌘V inside this window double-pastes. Kept as short
+    /// as the async readers tolerate to shrink that window.
+    private static let restoreDelay: TimeInterval = 0.1
 
     /// Lets the pasteboard server round-trip complete before ⌘V.
     private static let prePasteDelay: TimeInterval = 0.03
