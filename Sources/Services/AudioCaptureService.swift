@@ -8,7 +8,7 @@ final class AudioCaptureService {
     /// Called on the audio thread with a normalized 0...1 level.
     var onLevel: ((Float) -> Void)?
 
-    private let engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
     private(set) var isRunning = false
     private var configObserver: NSObjectProtocol?
     private var handlingConfigChange = false
@@ -19,6 +19,13 @@ final class AudioCaptureService {
         // several handlers would race to rebuild the graph on the next device
         // change.
         removeConfigObserver()
+
+        // Build a new engine every time. A reused one keeps the format of the
+        // device it last ran on, so installTap gets a 48 kHz format on a 16 kHz
+        // Bluetooth mic and throws an Objective-C exception. Swift cannot catch
+        // that, and the unwind corrupts the task state enough to crash the app.
+        engine = AVAudioEngine()
+
         installTap()
         addConfigObserver()
 
