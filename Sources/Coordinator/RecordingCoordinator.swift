@@ -117,6 +117,9 @@ final class RecordingCoordinator {
 
         do {
             try await session.start()
+            if cleanupEnabled(), cleaner.isAvailable {
+                cleaner.prepare(cleanup: true, vocabulary: vocabulary())
+            }
         } catch {
             NSLog("Yap: failed to start recording: \(error.localizedDescription)")
             hud.hide(after: 0)

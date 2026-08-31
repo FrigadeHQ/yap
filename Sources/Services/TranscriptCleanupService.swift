@@ -5,6 +5,9 @@ import FoundationModels
 @MainActor
 protocol TranscriptCleaning: AnyObject {
     var isAvailable: Bool { get }
+    /// Prepares the cleanup session while the user is still speaking, so the
+    /// finished transcript does not pay the model's full cold-start cost.
+    func prepare(cleanup: Bool, vocabulary: [String])
     /// Runs the finished transcript through the on-device model. `cleanup` does
     /// the filler/punctuation edit; a non-empty `vocabulary` applies the user's
     /// dictionary. With both set it does both in a single pass.
@@ -19,6 +22,16 @@ protocol TranscriptCleaning: AnyObject {
 /// delaying the user's words is never an acceptable trade for it.
 @MainActor
 final class TranscriptCleanupService: TranscriptCleaning {
+    private struct SessionConfiguration: Equatable {
+        let cleanup: Bool
+        let vocabulary: [String]
+    }
+
+    private struct PreparedSession {
+        let configuration: SessionConfiguration
+        let session: LanguageModelSession
+    }
+
     /// The on-device model's context window is about 4k tokens. Past this the
     /// request would fail anyway, so skip the round-trip and paste raw.
     private static let maxCleanupLength = 6_000
@@ -68,6 +81,13 @@ final class TranscriptCleanupService: TranscriptCleaning {
     private static let closing =
         "Preserve the speaker's wording and meaning everywhere else. Do not summarize and do not add content."
 
+    /// This is the stable portion of every request. Giving it to `prewarm`
+    /// lets Foundation Models prepare both the session instructions and the
+    /// known prompt prefix before the transcript is available.
+    private static let promptPrefix = "Edit this transcript:\n<transcript>\n"
+
+    private var preparedSession: PreparedSession?
+
     private static func dictionaryRule(_ vocabulary: [String]) -> String {
         """
         The speaker uses these names and terms: \(vocabulary.joined(separator: ", ")). \
@@ -91,11 +111,18 @@ final class TranscriptCleanupService: TranscriptCleaning {
 
     var isAvailable: Bool { SystemLanguageModel.default.isAvailable }
 
-    /// Loads the model ahead of the first dictation so the first paste doesn't
-    /// pay a cold-start pause.
-    func prewarm() {
-        guard isAvailable else { return }
-        LanguageModelSession(instructions: Self.preamble).prewarm()
+    func prepare(cleanup: Bool, vocabulary: [String]) {
+        guard isAvailable, cleanup || !vocabulary.isEmpty else {
+            preparedSession = nil
+            return
+        }
+
+        let configuration = SessionConfiguration(cleanup: cleanup, vocabulary: vocabulary)
+        guard preparedSession?.configuration != configuration else { return }
+
+        let session = Self.makeSession(for: configuration)
+        session.prewarm(promptPrefix: Prompt(Self.promptPrefix))
+        preparedSession = PreparedSession(configuration: configuration, session: session)
     }
 
     func process(_ text: String, cleanup: Bool, vocabulary: [String]) async -> String {
@@ -103,10 +130,17 @@ final class TranscriptCleanupService: TranscriptCleaning {
             return text
         }
 
-        // Fresh session per transcript: dictations are independent, and a reused
-        // session would accumulate them all in its context window.
-        let session = LanguageModelSession(instructions: Self.instructions(cleanup: cleanup, vocabulary: vocabulary))
-        let prompt = "Edit this transcript:\n<transcript>\n\(text)\n</transcript>"
+        let configuration = SessionConfiguration(cleanup: cleanup, vocabulary: vocabulary)
+        let session: LanguageModelSession
+        if let preparedSession, preparedSession.configuration == configuration {
+            session = preparedSession.session
+        } else {
+            session = Self.makeSession(for: configuration)
+        }
+        // Dictations are independent. Consume the prepared session once rather
+        // than accumulating future transcripts in its context window.
+        preparedSession = nil
+        let prompt = "\(Self.promptPrefix)\(text)\n</transcript>"
 
         let respond = Task {
             try await session.respond(
@@ -134,6 +168,12 @@ final class TranscriptCleanupService: TranscriptCleaning {
             NSLog("Yap: transcript post-processing fell back to the raw text: \(error.localizedDescription)")
             return text
         }
+    }
+
+    private static func makeSession(for configuration: SessionConfiguration) -> LanguageModelSession {
+        LanguageModelSession(
+            instructions: instructions(cleanup: configuration.cleanup, vocabulary: configuration.vocabulary)
+        )
     }
 
     /// Post-processing only removes, rearranges, or corrects the speaker's words,

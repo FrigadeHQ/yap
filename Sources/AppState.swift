@@ -21,7 +21,10 @@ final class AppState {
     var cleanupEnabled: Bool {
         didSet {
             UserDefaults.standard.set(cleanupEnabled, forKey: "cleanupEnabled")
-            if cleanupEnabled { cleanup.prewarm() }
+            cleanup.prepare(
+                cleanup: cleanupEnabled,
+                vocabulary: cleanupEnabled ? vocabulary.terms : []
+            )
         }
     }
 
@@ -172,7 +175,7 @@ final class AppState {
                 Self.languageName(for: $0).localizedCaseInsensitiveCompare(Self.languageName(for: $1)) == .orderedAscending
             }
         }
-        if cleanupEnabled { cleanup.prewarm() }
+        if cleanupEnabled { cleanup.prepare(cleanup: true, vocabulary: vocabulary.terms) }
 
         // Delivered on the main queue by the observer, so assign directly.
         deviceObserver.start { [weak self] name in

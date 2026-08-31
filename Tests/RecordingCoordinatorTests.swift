@@ -60,7 +60,12 @@ final class FakeSounds: SoundPlaying {
 final class FakeCleaner: TranscriptCleaning {
     var isAvailable = true
     var transform: (String) -> String = { $0 }
+    var prepared: [(cleanup: Bool, vocabulary: [String])] = []
     var cleaned: [String] = []
+
+    func prepare(cleanup: Bool, vocabulary: [String]) {
+        prepared.append((cleanup, vocabulary))
+    }
 
     func process(_ text: String, cleanup: Bool, vocabulary: [String]) async -> String {
         cleaned.append(text)
@@ -254,6 +259,22 @@ struct RecordingCoordinatorTests {
         #expect(hud.phases.contains(.cleaning))
     }
 
+    @Test func cleanupSessionIsPreparedWhileRecording() async {
+        let cleaner = FakeCleaner()
+        let coordinator = makeCoordinator(
+            cleaner: cleaner,
+            cleanupEnabled: true,
+            vocabulary: ["Venue.Network"]
+        )
+
+        await coordinator.toggle()
+
+        #expect(cleaner.prepared.count == 1)
+        #expect(cleaner.prepared.first?.cleanup == true)
+        #expect(cleaner.prepared.first?.vocabulary == ["Venue.Network"])
+        #expect(coordinator.state == .recording)
+    }
+
     @Test func cleanupIsSkippedWhenDisabled() async {
         let injector = FakeInjector()
         let hud = FakeHUD()
@@ -266,6 +287,7 @@ struct RecordingCoordinatorTests {
         await coordinator.toggle()
         await coordinator.toggle()
 
+        #expect(cleaner.prepared.isEmpty)
         #expect(cleaner.cleaned.isEmpty)
         #expect(injector.delivered == ["hello world"])
         #expect(!hud.phases.contains(.cleaning))
@@ -284,6 +306,7 @@ struct RecordingCoordinatorTests {
         await coordinator.toggle()
         await coordinator.toggle()
 
+        #expect(cleaner.prepared.isEmpty)
         #expect(cleaner.cleaned.isEmpty)
         #expect(injector.delivered == ["hello world"])
         #expect(!hud.phases.contains(.cleaning))
