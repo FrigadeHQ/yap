@@ -14,16 +14,24 @@ final class AudioCaptureService {
     private var handlingConfigChange = false
 
     func start() throws {
-        // Start from a clean slate. An observer left over from an earlier failed
-        // start would otherwise stack a second listener on the same engine, so
-        // several handlers would race to rebuild the graph on the next device
-        // change.
-        removeConfigObserver()
+        try restart()
+        isRunning = true
+    }
 
-        // Build a new engine every time. A reused one keeps the format of the
-        // device it last ran on, so installTap gets a 48 kHz format on a 16 kHz
-        // Bluetooth mic and throws an Objective-C exception. Swift cannot catch
-        // that, and the unwind corrupts the task state enough to crash the app.
+    /// Brings a fresh engine online, tearing down any existing graph first.
+    ///
+    /// A reused AVAudioEngine keeps the format of the device it last ran on, so
+    /// installTap can be handed a 48 kHz format on a 16 kHz Bluetooth mic and
+    /// throw an Objective-C exception. Swift cannot catch that, and the unwind
+    /// corrupts task state enough to crash the app on the next UI event. A fresh
+    /// engine always reads the current device's format, so both a cold start and
+    /// a live device switch go through here.
+    private func restart() throws {
+        // An observer left over from an earlier start would otherwise stack a
+        // second listener, so several handlers would race to rebuild the graph
+        // on the next device change.
+        removeConfigObserver()
+        engine.stop()
         engine = AVAudioEngine()
 
         installTap()
@@ -38,7 +46,6 @@ final class AudioCaptureService {
             engine.inputNode.removeTap(onBus: 0)
             throw error
         }
-        isRunning = true
     }
 
     func stop() {
@@ -53,6 +60,12 @@ final class AudioCaptureService {
         let input = engine.inputNode
         input.removeTap(onBus: 0)
         let format = input.outputFormat(forBus: 0)
+
+        // Mid-switch the node can briefly report a degenerate format (0 Hz or
+        // 0 channels), and installTap throws an uncatchable ObjC exception on
+        // one. Skip it and let the next configuration change rebuild the tap
+        // once the device has settled.
+        guard format.sampleRate > 0, format.channelCount > 0 else { return }
 
         // 2048 frames is about 23 level updates a second, which the meter needs
         // to look alive.
@@ -80,8 +93,9 @@ final class AudioCaptureService {
     }
 
     /// Switching the default input reconfigures the engine and invalidates the
-    /// installed tap. Re-point the tap and restart so recording continues on the
-    /// new device. Delivered on the main queue.
+    /// installed tap. Rebuild on a fresh engine so recording continues on the
+    /// new device without inheriting the old device's format, which is what made
+    /// installTap throw and crash the app. Delivered on the main queue.
     private func handleConfigurationChange() {
         // Rebuilding the graph can itself emit another configuration change.
         // Guard against re-entering while a rebuild is already in flight, and
@@ -90,11 +104,8 @@ final class AudioCaptureService {
         handlingConfigChange = true
         defer { handlingConfigChange = false }
 
-        installTap()
-        guard !engine.isRunning else { return }
-
         do {
-            try engine.start()
+            try restart()
         } catch {
             // The new device would not start. Tear down rather than leave a
             // half-running graph that looks alive but records nothing.
