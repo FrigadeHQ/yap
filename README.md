@@ -22,7 +22,7 @@ https://github.com/user-attachments/assets/9bd8dae6-49d6-4c06-98b9-878e24dd401f
 
 Yap lives in your menu bar and waits for a shortcut. Trigger it and a small window appears near the bottom of the screen with a live waveform and a running preview of what you have said so far. Press the shortcut again and the text gets pasted into the app you were already working in. Every transcript is saved locally, so you can go back and copy something again later.
 
-The default shortcut is `⌘⇧D`. You can rebind it, or set a single modifier key instead. Tapping right shift on its own works nicely if you have a spare thumb.
+The default shortcut is `⌘⇧D`. You can rebind it, or set a single modifier key instead. Tapping right shift on its own works nicely if you have a spare thumb. If you dictate in more than one language, give each one its own shortcut in Settings.
 
 ## Install
 
@@ -66,6 +66,7 @@ So Yap ships no model at all. It's roughly three thousand lines of native Swift 
 
 - On-device transcription through Apple's Speech framework
 - Global shortcut, fully rebindable, with optional single-modifier triggers like right shift
+- A shortcut per dictation language, so the key you press picks the language
 - Pastes straight into the focused field of whatever app you were in
 - Local transcript history with search, copy, and delete
 - Live waveform and partial transcript while you speak
@@ -119,7 +120,7 @@ No. There is no network code in the app at all. Transcription runs entirely on d
 
 There is not much of one, and that is on purpose. Yap does a single thing, and keeping it small enough that you never have to think about it is the main design principle. Most feature ideas make an app like this worse.
 
-We are not precious about it though. If something is missing that you would use every day, open an issue or send a pull request and we will give it a fair hearing. A language picker is the most likely next addition, since Yap follows your system locale today.
+We are not precious about it though. If something is missing that you would use every day, open an issue or send a pull request and we will give it a fair hearing.
 
 ## Development
 

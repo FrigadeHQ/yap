@@ -30,20 +30,22 @@ final class DictationSession: DictationSessioning {
         case unsupported
     }
 
-    /// Resolved once — querying supported locales is slow enough to be felt on
-    /// the first keypress.
-    private static var cachedResolution: Resolution?
+    /// Resolved once per locale — querying supported locales is slow enough to be
+    /// felt on the first keypress. Kept per locale rather than as a single slot so
+    /// that a profile for each language stays warm; alternating between them would
+    /// otherwise re-resolve on every switch.
+    private static var cachedResolutions: [String: Resolution] = [:]
 
     init(locale: Locale = .current) {
         self.locale = locale
     }
 
-    /// Switch dictation language while idle. Clears the resolved cache so the
-    /// next recording re-resolves for the new locale.
+    /// Switch dictation language while idle. The transcriber is bound to the old
+    /// locale, so it goes; the resolutions are keyed by locale and can stay.
     func setLocale(_ newLocale: Locale) {
+        guard newLocale != locale else { return }
         locale = newLocale
         transcriber = nil
-        Self.cachedResolution = nil
     }
 
     static func resolve(for locale: Locale) async -> Resolution {
@@ -55,7 +57,7 @@ final class DictationSession: DictationSessioning {
 
     static func prewarm(locale: Locale = .current) async {
         let resolution = await resolve(for: locale)
-        cachedResolution = resolution
+        cachedResolutions[locale.identifier] = resolution
         guard case .supported(let resolved) = resolution else { return }
         await TranscriptionService.prepareModel(for: resolved)
     }
@@ -74,11 +76,11 @@ final class DictationSession: DictationSessioning {
         try capture.start()
 
         let resolution: Resolution
-        if let cached = Self.cachedResolution {
+        if let cached = Self.cachedResolutions[locale.identifier] {
             resolution = cached
         } else {
             resolution = await Self.resolve(for: locale)
-            Self.cachedResolution = resolution
+            Self.cachedResolutions[locale.identifier] = resolution
         }
 
         guard case .supported(let engineLocale) = resolution else {

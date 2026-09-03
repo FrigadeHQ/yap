@@ -23,11 +23,12 @@ final class HUDController: HUDControlling {
         self.panel = panel
     }
 
-    func show(device: String?) {
+    func show(device: String?, language: String?) {
         hideTask?.cancel()
 
         // Reset state BEFORE the panel is on screen, so no stale frame from the previous session is ever visible.
         model.device = device
+        model.language = language
         model.partial = ""
         model.level = 0
         model.levels = Array(repeating: 0, count: HUDModel.waveformSampleCount)

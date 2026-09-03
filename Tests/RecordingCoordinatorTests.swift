@@ -37,10 +37,14 @@ final class FakeHUD: HUDControlling {
     var phases: [HUDPhase] = []
     var shown = 0
     var hidden = 0
+    var languages: [String?] = []
     var onConfirm: (() -> Void)?
     var onCancel: (() -> Void)?
 
-    func show(device: String?) { shown += 1 }
+    func show(device: String?, language: String?) {
+        shown += 1
+        languages.append(language)
+    }
     func setPhase(_ phase: HUDPhase) { phases.append(phase) }
     func setLevel(_ level: Float) {}
     func setPartial(_ text: String) {}
@@ -76,7 +80,8 @@ private func makeCoordinator(
     hud: FakeHUD? = nil,
     cleaner: FakeCleaner? = nil,
     cleanupEnabled: Bool = false,
-    vocabulary: [String] = []
+    vocabulary: [String] = [],
+    language: String? = nil
 ) -> RecordingCoordinator {
     RecordingCoordinator(
         session: session ?? FakeSession(),
@@ -87,7 +92,8 @@ private func makeCoordinator(
         cleaner: cleaner ?? FakeCleaner(),
         cleanupEnabled: { cleanupEnabled },
         vocabulary: { vocabulary },
-        deviceName: { "Test Mic" }
+        deviceName: { "Test Mic" },
+        language: { language }
     )
 }
 
@@ -96,6 +102,20 @@ struct RecordingCoordinatorTests {
     @Test func startsIdle() {
         let coordinator = makeCoordinator()
         #expect(coordinator.state == .idle)
+    }
+
+    @Test func handsTheHUDTheLanguageItIsListeningIn() async {
+        let hud = FakeHUD()
+        let coordinator = makeCoordinator(hud: hud, language: "DE")
+        await coordinator.toggle()
+        #expect(hud.languages == ["DE"])
+    }
+
+    @Test func leavesTheLanguageOffTheHUDWhenItIsTurnedOff() async {
+        let hud = FakeHUD()
+        let coordinator = makeCoordinator(hud: hud, language: nil)
+        await coordinator.toggle()
+        #expect(hud.languages == [nil])
     }
 
     @Test func toggleStartsRecording() async {

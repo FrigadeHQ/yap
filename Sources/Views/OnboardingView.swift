@@ -90,9 +90,14 @@ struct OnboardingView: View {
     }
 
     private var footnote: String {
-        app.permissions.allGranted
-            ? "You're all set. Press ⌘⇧D to start."
-            : "Grant all four to start dictating. No restart needed."
+        guard app.permissions.allGranted else {
+            return "Grant all four to start dictating. No restart needed."
+        }
+        // The shortcut is rebindable, so name whatever is actually bound.
+        guard let trigger = app.firstTriggerDescription else {
+            return "You're all set. Choose a shortcut in Settings to start."
+        }
+        return "You're all set. Press \(trigger) to start."
     }
 }
 

@@ -54,4 +54,25 @@ struct FunctionKeyTriggerTests {
             trigger: .none, keyCode: Int64(kVK_F5), flags: [], isRepeat: false
         ))
     }
+
+    @Test func matchesThePressToItsOwnProfile() {
+        let english = UUID()
+        let german = UUID()
+        let bindings = [(id: english, trigger: FunctionKeyTrigger.f6), (id: german, trigger: .f7)]
+
+        #expect(FunctionKeyTrigger.match(
+            bindings: bindings, keyCode: Int64(kVK_F6), flags: [], isRepeat: false
+        ) == english)
+        #expect(FunctionKeyTrigger.match(
+            bindings: bindings, keyCode: Int64(kVK_F7), flags: [], isRepeat: false
+        ) == german)
+    }
+
+    @Test func matchesNothingWhenNoProfileWantsTheKey() {
+        let bindings = [(id: UUID(), trigger: FunctionKeyTrigger.f6), (id: UUID(), trigger: .none)]
+
+        #expect(FunctionKeyTrigger.match(
+            bindings: bindings, keyCode: Int64(kVK_F9), flags: [], isRepeat: false
+        ) == nil)
+    }
 }

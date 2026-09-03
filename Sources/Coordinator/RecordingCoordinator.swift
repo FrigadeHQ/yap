@@ -21,6 +21,7 @@ final class RecordingCoordinator {
     private let cleanupEnabled: () -> Bool
     private let vocabulary: () -> [String]
     private let deviceName: () -> String?
+    private let language: () -> String?
 
     private var startedAt: Date?
 
@@ -37,7 +38,8 @@ final class RecordingCoordinator {
         cleaner: TranscriptCleaning,
         cleanupEnabled: @escaping () -> Bool,
         vocabulary: @escaping () -> [String],
-        deviceName: @escaping () -> String?
+        deviceName: @escaping () -> String?,
+        language: @escaping () -> String?
     ) {
         self.session = session
         self.injector = injector
@@ -48,6 +50,7 @@ final class RecordingCoordinator {
         self.cleanupEnabled = cleanupEnabled
         self.vocabulary = vocabulary
         self.deviceName = deviceName
+        self.language = language
 
         session.onLevel = { [weak self] level in self?.hud.setLevel(level) }
         session.onPartial = { [weak self] text in self?.hud.setPartial(text) }
@@ -112,7 +115,7 @@ final class RecordingCoordinator {
         state = .recording
         startedAt = Date()
         sounds.playStart()
-        hud.show(device: deviceName())
+        hud.show(device: deviceName(), language: language())
         hud.setPhase(.listening)
 
         do {
