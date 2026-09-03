@@ -72,6 +72,7 @@ So Yap ships no model at all. It's roughly three thousand lines of native Swift 
 - Press escape twice to discard a dictation in progress
 - Follows your system default microphone, including when it changes mid-session
 - Optional launch at login, off by default
+- Lives in the menu bar, the Dock, both, or neither — hide either icon from Settings and run on the shortcut alone
 - No account, no network calls, no telemetry
 
 ## Requirements
