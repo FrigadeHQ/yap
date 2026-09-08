@@ -48,6 +48,13 @@ final class AppState {
         }
     }
 
+    /// With this and `showInDock` both off, Yap runs on the shortcut alone and puts
+    /// nothing on screen. Opening it again from Spotlight or Finder is the way back:
+    /// `applicationShouldHandleReopen` surfaces a window without launching a second copy.
+    var showInMenuBar: Bool {
+        didSet { UserDefaults.standard.set(showInMenuBar, forKey: "showInMenuBar") }
+    }
+
     /// "system" follows the OS locale; otherwise a BCP-47 identifier.
     var dictationLanguage: String {
         didSet {
@@ -88,6 +95,7 @@ final class AppState {
 
         soundsEnabled = (UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool) ?? true
         showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
+        showInMenuBar = (UserDefaults.standard.object(forKey: "showInMenuBar") as? Bool) ?? true
         cleanupEnabled = (UserDefaults.standard.object(forKey: "cleanupEnabled") as? Bool) ?? false
         modifierTrigger = ModifierTrigger(
             rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
