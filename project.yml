@@ -29,6 +29,8 @@ targets:
     platform: macOS
     sources:
       - path: Sources
+        excludes:
+          - CLI
     dependencies:
       - package: KeyboardShortcuts
     settings:
@@ -42,6 +44,24 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
 
+  YapCLI:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/CLI
+      - path: Sources/Services/AudioCaptureService.swift
+      - path: Sources/Services/AudioLevel.swift
+      - path: Sources/Services/BufferConverter.swift
+    settings:
+      base:
+        PRODUCT_NAME: yap
+        PRODUCT_BUNDLE_IDENTIFIER: com.frigade.YapCLI
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Yap uses the microphone only while recording an on-device transcription.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+
   YapTests:
     type: bundle.unit-test
     platform: macOS
@@ -54,6 +74,17 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.frigade.YapTests
         GENERATE_INFOPLIST_FILE: YES
 
+  YapCLITests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: CLITests/CLIArgumentsTests.swift
+      - path: Sources/CLI/CLIArguments.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.frigade.YapCLITests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Yap:
     build:
@@ -63,3 +94,12 @@ schemes:
     test:
       targets:
         - YapTests
+
+  YapCLI:
+    build:
+      targets:
+        YapCLI: all
+        YapCLITests: [test]
+    test:
+      targets:
+        - YapCLITests
