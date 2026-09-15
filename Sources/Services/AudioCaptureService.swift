@@ -50,10 +50,19 @@ final class AudioCaptureService {
 
     func stop() {
         removeConfigObserver()
-        guard isRunning else { return }
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
-        isRunning = false
+        if isRunning {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            isRunning = false
+        }
+
+        // Stopping the engine halts rendering but leaves the input node's HAL
+        // unit instantiated, which keeps the microphone device open. That is
+        // enough to hold Bluetooth headsets in their low-quality call/recording
+        // mode, degrading all system audio for as long as Yap runs after the
+        // first dictation. Drop the engine so the input unit is deallocated and
+        // the device released; start() builds a fresh one for the next take.
+        engine = AVAudioEngine()
     }
 
     private func installTap() {
