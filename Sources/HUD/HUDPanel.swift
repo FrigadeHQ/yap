@@ -29,7 +29,11 @@ final class HUDPanel: NSPanel {
 
     // Layout is forced before measuring: reading `fittingSize` while SwiftUI still has a stale layout returns the wrong size, so the panel would appear at one size and visibly snap to another.
     func reposition() {
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
+        // Anchor to the screen holding the app being dictated into. Fall back to
+        // the mouse's screen, then the main one, so the widget still lands
+        // somewhere sensible when no focused window can be resolved.
+        guard let screen = FocusedWindow.screen()
+            ?? NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
             ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
 
