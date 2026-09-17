@@ -216,6 +216,12 @@ struct SettingsView: View {
                     )
                     Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
                     SettingsToggleRow(
+                        title: "Save to history",
+                        subtitle: "Keep a local copy of each dictation. Earlier transcripts stay until you clear them.",
+                        isOn: $app.historyEnabled
+                    )
+                    Divider().overlay(Theme.hairline).padding(.horizontal, Theme.s3)
+                    SettingsToggleRow(
                         title: "Clean up transcripts",
                         subtitle: app.cleanup.isAvailable
                             ? "Fix punctuation, format lists, and apply spoken corrections with Apple Intelligence, on-device."

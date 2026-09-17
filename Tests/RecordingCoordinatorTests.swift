@@ -76,6 +76,7 @@ private func makeCoordinator(
     hud: FakeHUD? = nil,
     cleaner: FakeCleaner? = nil,
     cleanupEnabled: Bool = false,
+    historyEnabled: @escaping () -> Bool = { true },
     vocabulary: [String] = []
 ) -> RecordingCoordinator {
     RecordingCoordinator(
@@ -86,6 +87,7 @@ private func makeCoordinator(
         sounds: FakeSounds(),
         cleaner: cleaner ?? FakeCleaner(),
         cleanupEnabled: { cleanupEnabled },
+        historyEnabled: historyEnabled,
         vocabulary: { vocabulary },
         deviceName: { "Test Mic" }
     )
@@ -163,6 +165,33 @@ struct RecordingCoordinatorTests {
         // Still saved to history even when it couldn't be pasted.
         #expect(history.saved == ["hello world"])
         #expect(coordinator.lastOutcome == .leftOnClipboard)
+    }
+
+    @Test func historyIsSkippedWhenDisabled() async {
+        let injector = FakeInjector()
+        let history = FakeHistory()
+        let coordinator = makeCoordinator(injector: injector, history: history, historyEnabled: { false })
+
+        await coordinator.toggle()
+        await coordinator.toggle()
+
+        // The text still reaches the target app; it just isn't kept.
+        #expect(injector.delivered == ["hello world"])
+        #expect(history.saved.isEmpty)
+        #expect(coordinator.state == .idle)
+    }
+
+    @Test func historySettingIsReadWhenRecordingStops() async {
+        let history = FakeHistory()
+        var historyEnabled = true
+        let coordinator = makeCoordinator(history: history, historyEnabled: { historyEnabled })
+
+        await coordinator.toggle()
+        historyEnabled = false
+        await coordinator.toggle()
+
+        // Switching it off mid-dictation keeps that dictation out of history too.
+        #expect(history.saved.isEmpty)
     }
 
     @Test func cancelDiscardsWithoutInsertingOrSaving() async {
