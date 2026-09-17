@@ -19,6 +19,7 @@ final class RecordingCoordinator {
     private let sounds: SoundPlaying
     private let cleaner: TranscriptCleaning
     private let cleanupEnabled: () -> Bool
+    private let historyEnabled: () -> Bool
     private let vocabulary: () -> [String]
     private let deviceName: () -> String?
 
@@ -36,6 +37,7 @@ final class RecordingCoordinator {
         sounds: SoundPlaying,
         cleaner: TranscriptCleaning,
         cleanupEnabled: @escaping () -> Bool,
+        historyEnabled: @escaping () -> Bool,
         vocabulary: @escaping () -> [String],
         deviceName: @escaping () -> String?
     ) {
@@ -46,6 +48,7 @@ final class RecordingCoordinator {
         self.sounds = sounds
         self.cleaner = cleaner
         self.cleanupEnabled = cleanupEnabled
+        self.historyEnabled = historyEnabled
         self.vocabulary = vocabulary
         self.deviceName = deviceName
 
@@ -169,8 +172,10 @@ final class RecordingCoordinator {
                 NSLog("Yap: paste blocked by secure input held by \(holder ?? "another app"); text left on clipboard")
             }
 
-            let duration = startedAt.map { Date().timeIntervalSince($0) }
-            history.save(text: text, duration: duration, device: deviceName())
+            if historyEnabled() {
+                let duration = startedAt.map { Date().timeIntervalSince($0) }
+                history.save(text: text, duration: duration, device: deviceName())
+            }
 
             hud.hide(after: 0)
         } catch {
