@@ -27,8 +27,11 @@ final class TextInjector: TextInjecting {
     ///
     /// This is also how long the transcript lingers on the clipboard after we
     /// paste it, so a manual ⌘V inside this window double-pastes. Kept as short
-    /// as the async readers tolerate to shrink that window.
-    private static let restoreDelay: TimeInterval = 0.1
+    /// as the async readers tolerate to shrink that window: 0.1s was too tight
+    /// and raced Electron terminals like cmux (their async read fired after the
+    /// restore, so nothing landed), 0.5s lets the read win while keeping the
+    /// double-paste window small.
+    private static let restoreDelay: TimeInterval = 0.5
 
     /// Lets the pasteboard server round-trip complete before ⌘V.
     private static let prePasteDelay: TimeInterval = 0.03
