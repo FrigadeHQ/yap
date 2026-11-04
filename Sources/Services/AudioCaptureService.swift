@@ -95,8 +95,13 @@ final class AudioCaptureService {
         // to look alive.
         input.installTap(onBus: 0, bufferSize: 2048, format: nil) { [weak self] buffer, _ in
             guard let self else { return }
-            self.onBuffer?(buffer)
-            self.onLevel?(AudioLevel.normalized(from: buffer))
+            // Another app's echo cancellation can flip the shared mic to a
+            // layout-less multi-channel stream; collapse it to a defined mono
+            // buffer so the downstream converter resamples it instead of
+            // emitting silence.
+            let mono = AudioDownmix.toMono(buffer)
+            self.onBuffer?(mono)
+            self.onLevel?(AudioLevel.normalized(from: mono))
         }
     }
 
