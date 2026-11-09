@@ -34,6 +34,10 @@ struct FillerRemovalTests {
         #expect(strip("yeah. um okay") == "Yeah. Okay")
     }
 
+    @Test func doesNotCapitalizeAfterPeriodInsideWord() {
+        #expect(strip("um see example.com and notes.txt") == "See example.com and notes.txt")
+    }
+
     @Test func doesNotLowercaseExistingCapitals() {
         #expect(strip("um I met Anna today") == "I met Anna today")
     }

@@ -38,19 +38,28 @@ enum FillerRemoval {
 
     /// Uppercase the first letter, and the first letter after each sentence end,
     /// so removing a leading "Um" doesn't leave the sentence starting lowercase.
-    /// Never lowercases anything that was already capital.
+    /// Never lowercases anything that was already capital. A sentence end only
+    /// counts when whitespace follows it, so "example.com" and "notes.txt" stay
+    /// as they are.
     private static func capitalizeSentences(_ text: String) -> String {
         var chars = Array(text)
         var capitalizeNext = true
+        var afterSentenceEnd = false
         for i in chars.indices {
             let c = chars[i]
             if capitalizeNext, c.isLetter {
                 chars[i] = Character(c.uppercased())
                 capitalizeNext = false
+                afterSentenceEnd = false
             } else if ".!?".contains(c) {
-                capitalizeNext = true
-            } else if !c.isWhitespace {
+                afterSentenceEnd = true
                 capitalizeNext = false
+            } else if c.isWhitespace {
+                if afterSentenceEnd { capitalizeNext = true }
+                afterSentenceEnd = false
+            } else {
+                capitalizeNext = false
+                afterSentenceEnd = false
             }
         }
         return String(chars)
