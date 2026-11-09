@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Query(sort: \Transcript.createdAt, order: .reverse) private var transcripts: [Transcript]
     @State private var search = ""
@@ -49,6 +50,11 @@ struct HistoryView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
             Spacer()
+            if !app.historyEnabled {
+                Text("Saving is off")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+            }
             if !transcripts.isEmpty {
                 Button("Clear all") {
                     for transcript in transcripts { context.delete(transcript) }
