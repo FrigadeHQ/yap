@@ -64,13 +64,15 @@ struct RecordingHUDView: View {
         )
         .shadow(color: .black.opacity(0.22), radius: 22, y: 8)
         // Transparent margin so the shadow can fall off inside the window instead
-        // of being clipped square. The bottom needs more room than the top because
-        // the shadow is offset downward and the blur tails past its nominal radius.
+        // of being clipped square. A radius-22 blur tails well past 22pt, so each
+        // side needs roughly 2.5x the radius of clearance or a faint rectangular
+        // edge shows where the window cuts the tail off. The bottom gets the most
+        // because the shadow is also offset downward, the top the least.
         .padding(Self.shadowInsets)
         .animation(.easeInOut(duration: 0.18), value: model.phase)
     }
 
-    static let shadowInsets = EdgeInsets(top: 28, leading: 34, bottom: 54, trailing: 34)
+    static let shadowInsets = EdgeInsets(top: 40, leading: 56, bottom: 72, trailing: 56)
 
     private var isRecordingPhase: Bool {
         model.phase == .listening || model.phase == .confirmCancel
