@@ -25,6 +25,10 @@ final class AppState {
         }
     }
 
+    var historyEnabled: Bool {
+        didSet { UserDefaults.standard.set(historyEnabled, forKey: "historyEnabled") }
+    }
+
     var mainPage: MainPage = .settings
 
     var modifierTrigger: ModifierTrigger {
@@ -97,6 +101,7 @@ final class AppState {
         showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
         showInMenuBar = (UserDefaults.standard.object(forKey: "showInMenuBar") as? Bool) ?? true
         cleanupEnabled = (UserDefaults.standard.object(forKey: "cleanupEnabled") as? Bool) ?? false
+        historyEnabled = (UserDefaults.standard.object(forKey: "historyEnabled") as? Bool) ?? true
         modifierTrigger = ModifierTrigger(
             rawValue: UserDefaults.standard.string(forKey: "modifierTrigger") ?? ""
         ) ?? .none
@@ -125,6 +130,7 @@ final class AppState {
             sounds: sounds,
             cleaner: cleanup,
             cleanupEnabled: { [weak self] in self?.cleanupEnabled ?? false },
+            historyEnabled: { [weak self] in self?.historyEnabled ?? true },
             vocabulary: { [weak self] in self?.vocabulary.terms ?? [] },
             deviceName: { [weak self] in self?.currentInputName }
         )
