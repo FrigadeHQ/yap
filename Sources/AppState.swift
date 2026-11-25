@@ -88,7 +88,11 @@ final class AppState {
 
     private init() {
         do {
-            modelContainer = try ModelContainer(for: Transcript.self)
+            HistoryLocation.migrateLegacyStoreIfNeeded()
+            modelContainer = try ModelContainer(
+                for: Transcript.self,
+                configurations: ModelConfiguration(url: HistoryLocation.storeURL)
+            )
         } catch {
             fatalError("Yap: failed to create model container: \(error)")
         }
