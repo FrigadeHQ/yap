@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import KeyboardShortcuts
 import Observation
 import SwiftData
 
@@ -140,6 +141,7 @@ final class AppState {
         applyDockVisibility()
         observeWindowClosesForDockVisibility()
         permissions.refresh()
+        permissions.refreshAutomation()
         launchAtLogin.refresh()
 
         // Accessibility takes effect live — no restart needed. Observing simply
@@ -261,7 +263,7 @@ final class AppState {
     /// Surfaces a window when the user opens Yap from Finder/Dock. Without this,
     /// launching an already-running agent app appears to do nothing at all.
     func presentMainWindow() {
-        if permissions.allGranted {
+        if permissions.essentialsGranted {
             openMain(page: mainPage)
         } else {
             openOnboarding()

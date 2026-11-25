@@ -69,13 +69,13 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            Button(app.permissions.allGranted ? "Continue to Settings" : "Continue") {
+            Button(app.permissions.essentialsGranted ? "Continue to Settings" : "Continue") {
                 NSApp.keyWindow?.close()
                 app.openMain(page: .settings)
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(!app.permissions.allGranted)
-            .opacity(app.permissions.allGranted ? 1 : 0.5)
+            .disabled(!app.permissions.essentialsGranted)
+            .opacity(app.permissions.essentialsGranted ? 1 : 0.5)
 
             Text(footnote)
                 .font(.system(size: 12))
@@ -86,13 +86,21 @@ struct OnboardingView: View {
         .padding(Theme.s6)
         .frame(width: 460, height: 560)
         .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear { app.permissions.refresh() }
+        .onAppear {
+            app.permissions.refresh()
+            app.permissions.refreshAutomation()
+        }
     }
 
     private var footnote: String {
-        app.permissions.allGranted
-            ? "You're all set. Press ⌘⇧D to start."
-            : "Grant all four to start dictating. No restart needed."
+        guard app.permissions.essentialsGranted else {
+            return "Grant the first three to start dictating. No restart needed."
+        }
+        // The shortcut is configurable, so describe the one actually set.
+        guard let shortcut = app.shortcutDescription else {
+            return "You're all set. Choose a shortcut in Settings to start."
+        }
+        return "You're all set. \(shortcut) to start."
     }
 }
 
