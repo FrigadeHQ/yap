@@ -134,6 +134,10 @@ final class ModifierHotkeyMonitor {
         }
 
         guard isHolding else { return }
+        // How long the release sat in the queue before the main thread got to
+        // it. Anything beyond a few ms here is the main thread being busy.
+        let waited = ProcessInfo.processInfo.systemUptime - event.timestamp
+        Timing.log.info("shortcut release waited \(Int(waited * 1000), privacy: .public) ms for the main thread")
         isHolding = false
         let heldFor = pressedAt.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
         pressedAt = nil

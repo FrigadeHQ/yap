@@ -110,13 +110,17 @@ final class RecordingCoordinator {
         injector.captureTarget()
 
         state = .recording
+        let pressed = ContinuousClock.now
         startedAt = Date()
-        sounds.playStart()
-        hud.show(device: deviceName())
+        // Phase first, so the frame the HUD commits on show is already "Listening".
         hud.setPhase(.listening)
+        hud.show(device: deviceName())
+        sounds.playStart()
+        let shown = ContinuousClock.now
 
         do {
             try await session.start()
+            Timing.log.info("HUD on screen after \(Timing.ms(shown - pressed), privacy: .public) ms; recording ready after \(Timing.ms(ContinuousClock.now - pressed), privacy: .public) ms")
         } catch {
             NSLog("Yap: failed to start recording: \(error.localizedDescription)")
             hud.hide(after: 0)

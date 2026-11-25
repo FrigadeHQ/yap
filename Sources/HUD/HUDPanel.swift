@@ -21,6 +21,8 @@ final class HUDPanel: NSPanel {
 
         let hosting = NSHostingView(rootView: RecordingHUDView(model: model))
         hosting.autoresizingMask = [.width, .height]
+        // Layer-backed so the fade-in can run as a Core Animation animation.
+        hosting.wantsLayer = true
         contentView = hosting
     }
 
