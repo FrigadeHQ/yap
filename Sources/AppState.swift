@@ -224,6 +224,24 @@ final class AppState {
             ?? locale.identifier(.bcp47)
     }
 
+    /// The configured way to start dictating, phrased for a sentence, e.g.
+    /// "Press ⇧⌘D or tap Right ⌘ Command". Nil when every trigger is off.
+    var shortcutDescription: String? {
+        var ways: [String] = []
+        if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecording) {
+            ways.append("press \(shortcut)")
+        }
+        if functionKeyTrigger != .none {
+            ways.append("press \(functionKeyTrigger.title)")
+        }
+        if modifierTrigger != .none {
+            ways.append("tap \(modifierTrigger.title)")
+        }
+        guard !ways.isEmpty else { return nil }
+        let sentence = ways.joined(separator: " or ")
+        return sentence.prefix(1).uppercased() + sentence.dropFirst()
+    }
+
     func toggleRecording() {
         Task { await coordinator.toggle() }
     }

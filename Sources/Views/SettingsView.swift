@@ -22,7 +22,11 @@ struct SettingsView: View {
             }
             .padding(Theme.s5)
         }
-        .onAppear { app.permissions.refresh(); app.launchAtLogin.refresh() }
+        .onAppear {
+            app.permissions.refresh()
+            app.permissions.refreshAutomation()
+            app.launchAtLogin.refresh()
+        }
     }
 
     private var historySection: some View {

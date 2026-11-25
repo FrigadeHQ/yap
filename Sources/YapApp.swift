@@ -47,7 +47,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let app = AppState.shared
         app.bootstrap()
 
-        if !app.permissions.allGranted {
+        // Only for what dictation truly needs. Automation is optional, and its
+        // status isn't knowable at launch (System Events is usually asleep).
+        if !app.permissions.essentialsGranted {
             app.openOnboarding()
         }
     }
