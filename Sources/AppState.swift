@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import KeyboardShortcuts
 import Observation
 import SwiftData
 
@@ -88,7 +89,11 @@ final class AppState {
 
     private init() {
         do {
-            modelContainer = try ModelContainer(for: Transcript.self)
+            HistoryLocation.migrateLegacyStoreIfNeeded()
+            modelContainer = try ModelContainer(
+                for: Transcript.self,
+                configurations: ModelConfiguration(url: HistoryLocation.storeURL)
+            )
         } catch {
             fatalError("Yap: failed to create model container: \(error)")
         }
@@ -136,6 +141,7 @@ final class AppState {
         applyDockVisibility()
         observeWindowClosesForDockVisibility()
         permissions.refresh()
+        permissions.refreshAutomation()
         launchAtLogin.refresh()
 
         // Accessibility takes effect live — no restart needed. Observing simply
@@ -220,6 +226,24 @@ final class AppState {
             ?? locale.identifier(.bcp47)
     }
 
+    /// The configured way to start dictating, phrased for a sentence, e.g.
+    /// "Press ⇧⌘D or tap Right ⌘ Command". Nil when every trigger is off.
+    var shortcutDescription: String? {
+        var ways: [String] = []
+        if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecording) {
+            ways.append("press \(shortcut)")
+        }
+        if functionKeyTrigger != .none {
+            ways.append("press \(functionKeyTrigger.title)")
+        }
+        if modifierTrigger != .none {
+            ways.append("tap \(modifierTrigger.title)")
+        }
+        guard !ways.isEmpty else { return nil }
+        let sentence = ways.joined(separator: " or ")
+        return sentence.prefix(1).uppercased() + sentence.dropFirst()
+    }
+
     func toggleRecording() {
         Task { await coordinator.toggle() }
     }
@@ -239,7 +263,7 @@ final class AppState {
     /// Surfaces a window when the user opens Yap from Finder/Dock. Without this,
     /// launching an already-running agent app appears to do nothing at all.
     func presentMainWindow() {
-        if permissions.allGranted {
+        if permissions.essentialsGranted {
             openMain(page: mainPage)
         } else {
             openOnboarding()

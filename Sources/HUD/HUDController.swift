@@ -37,15 +37,27 @@ final class HUDController: HUDControlling {
         prepare()
         guard let panel else { return }
 
-        panel.alphaValue = 0
         panel.reposition()
+        panel.alphaValue = 1
         panel.orderFrontRegardless()
 
-        // Short fade covers any residual first-frame layout settling.
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.12
-            panel.animator().alphaValue = 1
+        // Short fade covers any residual first-frame layout settling. It runs as
+        // a Core Animation layer animation, which the render server plays on its
+        // own; animating the window's alpha instead is driven from the main
+        // thread, so it stalled whenever the main thread did.
+        if let layer = panel.contentView?.layer {
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0
+            fade.toValue = 1
+            fade.duration = 0.12
+            layer.add(fade, forKey: "fadeIn")
         }
+
+        // Commit now. Starting the microphone comes next and blocks the main
+        // thread for a moment; without an explicit flush the HUD would not reach
+        // the screen until that finished, so it appeared late.
+        panel.displayIfNeeded()
+        CATransaction.flush()
     }
 
     func setPhase(_ phase: HUDPhase) {

@@ -18,7 +18,15 @@ final class HistoryStore: HistoryStoring {
     func save(text: String, duration: Double?, device: String?) {
         let transcript = Transcript(text: text, durationSeconds: duration, inputDeviceName: device)
         context.insert(transcript)
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            // A failed save leaves the row pending, and SwiftData's autosave will
+            // retry it on the main thread indefinitely. Drop it instead: losing one
+            // history entry beats stalling every dictation that follows.
+            NSLog("Yap: could not save transcript to history: \(error.localizedDescription)")
+            context.rollback()
+        }
     }
 
     func recent(limit: Int? = nil) -> [Transcript] {

@@ -15,26 +15,54 @@ final class PermissionsManager {
     var microphone: Status = .notDetermined
     var speech: Status = .notDetermined
     var accessibility: Bool = false
-    var automation: Status = .notDetermined
-
-    private var pollTimer: Timer?
-
-    var allGranted: Bool {
-        microphone == .granted && speech == .granted && accessibility && automation == .granted
+    // Starts from the last grant we observed. System Events reports
+    // "undetermined" while it isn't running, which it usually isn't at launch, so
+    // without this every launch looked like a missing permission and reopened
+    // the welcome window.
+    var automation: Status = UserDefaults.standard.bool(forKey: automationGrantedKey) ? .granted : .notDetermined {
+        didSet { UserDefaults.standard.set(automation == .granted, forKey: Self.automationGrantedKey) }
     }
 
+    private static let automationGrantedKey = "automationGranted"
+    private var pollTimer: Timer?
+    private var automationCheck: Task<Void, Never>?
+
+    var allGranted: Bool {
+        essentialsGranted && automation == .granted
+    }
+
+    /// What dictation can't work without. Automation is optional: the AppleScript
+    /// paste falls back to synthetic ⌘V when it's unavailable.
+    var essentialsGranted: Bool {
+        microphone == .granted && speech == .granted && accessibility
+    }
+
+    /// Cheap, local checks only. This runs on every app switch and on a timer,
+    /// so anything that talks to another process belongs in `refreshAutomation`.
     func refresh() {
         microphone = Self.map(AVCaptureDevice.authorizationStatus(for: .audio))
         speech = Self.map(SFSpeechRecognizer.authorizationStatus())
         accessibility = AXIsProcessTrusted()
+    }
 
-        Self.wakeSystemEvents()
-        let latestAutomation = Self.automationStatus(prompt: false)
-        // System Events reports undetermined while asleep even though the grant
-        // is on file, so never let that transient reading undo a grant we've
-        // already observed; only an explicit denial should.
-        if !(latestAutomation == .notDetermined && automation == .granted) {
-            automation = latestAutomation
+    /// The Automation check sends an Apple Event to System Events and can launch
+    /// it, so it runs off the main thread and only when a permissions screen is
+    /// showing. It used to run on every app switch and every few seconds, on the
+    /// main thread, where it could hold up the shortcut.
+    func refreshAutomation() {
+        guard automationCheck == nil else { return }
+        automationCheck = Task { [weak self] in
+            let latest = await Task.detached(priority: .utility) { () -> Status in
+                Self.wakeSystemEvents()
+                return Self.automationStatus(prompt: false)
+            }.value
+            guard let self else { return }
+            self.automationCheck = nil
+            // Never let a transient "undetermined" undo a grant already on file;
+            // only an explicit denial should.
+            if !(latest == .notDetermined && self.automation == .granted) {
+                self.automation = latest
+            }
         }
     }
 
